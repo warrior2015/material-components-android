@@ -38,8 +38,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.Px;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.ViewCompat;
 import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.internal.ViewUtils;
 import com.google.android.material.resources.MaterialResources;
 
 /**
@@ -53,6 +53,11 @@ import com.google.android.material.resources.MaterialResources;
  *             layoutManager.getOrientation());
  *     recyclerView.addItemDecoration(dividerItemDecoration);
  * </pre>
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/Divider.md">component
+ * developer guidance</a> and <a href="https://material.io/components/divider/overview">design
+ * guidelines</a>.
  */
 public class MaterialDividerItemDecoration extends ItemDecoration {
   public static final int HORIZONTAL = LinearLayout.HORIZONTAL;
@@ -171,7 +176,7 @@ public class MaterialDividerItemDecoration extends ItemDecoration {
   public void setDividerColor(@ColorInt int color) {
     this.color = color;
     dividerDrawable = DrawableCompat.wrap(dividerDrawable);
-    DrawableCompat.setTint(dividerDrawable, color);
+    dividerDrawable.setTint(color);
   }
 
   /**
@@ -313,20 +318,23 @@ public class MaterialDividerItemDecoration extends ItemDecoration {
       left = 0;
       right = parent.getWidth();
     }
-    boolean isRtl = ViewCompat.getLayoutDirection(parent) == ViewCompat.LAYOUT_DIRECTION_RTL;
+    boolean isRtl = ViewUtils.isLayoutRtl(parent);
     left += isRtl ? insetEnd : insetStart;
     right -= isRtl ? insetStart : insetEnd;
 
     int childCount = parent.getChildCount();
-    int dividerCount = lastItemDecorated ? childCount : childCount - 1;
-    for (int i = 0; i < dividerCount; i++) {
+    for (int i = 0; i < childCount; i++) {
       View child = parent.getChildAt(i);
-      parent.getDecoratedBoundsWithMargins(child, tempRect);
-      // Take into consideration any translationY added to the view.
-      int bottom = tempRect.bottom + Math.round(child.getTranslationY());
-      int top = bottom - dividerDrawable.getIntrinsicHeight() - thickness;
-      dividerDrawable.setBounds(left, top, right, bottom);
-      dividerDrawable.draw(canvas);
+      if (shouldDrawDivider(parent, child)) {
+        parent.getLayoutManager().getDecoratedBoundsWithMargins(child, tempRect);
+        // Take into consideration any translationY added to the view.
+        int bottom = tempRect.bottom + Math.round(child.getTranslationY());
+        int top = bottom - thickness;
+        dividerDrawable.setBounds(left, top, right, bottom);
+        int alpha = Math.round(child.getAlpha() * 255);
+        dividerDrawable.setAlpha(alpha);
+        dividerDrawable.draw(canvas);
+      }
     }
     canvas.restore();
   }
@@ -351,15 +359,29 @@ public class MaterialDividerItemDecoration extends ItemDecoration {
     top += insetStart;
     bottom -= insetEnd;
 
+    boolean isRtl = ViewUtils.isLayoutRtl(parent);
+
     int childCount = parent.getChildCount();
     for (int i = 0; i < childCount; i++) {
       View child = parent.getChildAt(i);
-      parent.getLayoutManager().getDecoratedBoundsWithMargins(child, tempRect);
-      // Take into consideration any translationY added to the view.
-      int right = tempRect.right + Math.round(child.getTranslationX());
-      int left = right - dividerDrawable.getIntrinsicWidth() - thickness;
-      dividerDrawable.setBounds(left, top, right, bottom);
-      dividerDrawable.draw(canvas);
+      if (shouldDrawDivider(parent, child)) {
+        parent.getLayoutManager().getDecoratedBoundsWithMargins(child, tempRect);
+        // Take into consideration any translationX added to the view.
+        int translationX = Math.round(child.getTranslationX());
+        int left;
+        int right;
+        if (isRtl) {
+          left = tempRect.left + translationX;
+          right = left + thickness;
+        } else {
+          right = tempRect.right + translationX;
+          left = right - thickness;
+        }
+        dividerDrawable.setBounds(left, top, right, bottom);
+        int alpha = Math.round(child.getAlpha() * 255);
+        dividerDrawable.setAlpha(alpha);
+        dividerDrawable.draw(canvas);
+      }
     }
     canvas.restore();
   }
@@ -371,12 +393,40 @@ public class MaterialDividerItemDecoration extends ItemDecoration {
       @NonNull RecyclerView parent,
       @NonNull RecyclerView.State state) {
     outRect.set(0, 0, 0, 0);
-    if (lastItemDecorated || parent.getChildLayoutPosition(view) != state.getItemCount() - 1) {
+    // Only add offset if there's a divider displayed.
+    if (shouldDrawDivider(parent, view)) {
       if (orientation == VERTICAL) {
-        outRect.bottom = dividerDrawable.getIntrinsicHeight() + thickness;
+        outRect.bottom = thickness;
       } else {
-        outRect.right = dividerDrawable.getIntrinsicWidth() + thickness;
+        if (ViewUtils.isLayoutRtl(parent)) {
+          outRect.left = thickness;
+        } else {
+          outRect.right = thickness;
+        }
       }
     }
+  }
+
+  private boolean shouldDrawDivider(@NonNull RecyclerView parent, @NonNull View child) {
+    int position = parent.getChildAdapterPosition(child);
+    RecyclerView.Adapter<?> adapter = parent.getAdapter();
+    boolean isLastItem = adapter != null && position == adapter.getItemCount() - 1;
+
+    return position != RecyclerView.NO_POSITION
+        && (!isLastItem || lastItemDecorated)
+        && shouldDrawDivider(position, adapter);
+  }
+
+  /**
+   * Whether a divider should be drawn below the current item that is being drawn.
+   *
+   * <p>Note: if lasItemDecorated is false, the divider below the last item will never be drawn even
+   * if this method returns true.
+   *
+   * @param position the position of the current item being drawn.
+   * @param adapter the {@link RecyclerView.Adapter} associated with the item being drawn.
+   */
+  protected boolean shouldDrawDivider(int position, @Nullable RecyclerView.Adapter<?> adapter) {
+    return true;
   }
 }

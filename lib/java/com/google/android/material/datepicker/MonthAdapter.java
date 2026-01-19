@@ -18,6 +18,8 @@ package com.google.android.material.datepicker;
 import com.google.android.material.R;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +27,8 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+import androidx.core.util.Pair;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Locale;
@@ -48,6 +52,8 @@ class MonthAdapter extends BaseAdapter {
           + UtcDates.getUtcCalendar().getMaximum(Calendar.DAY_OF_WEEK)
           - 1;
 
+  private static final int NO_DAY_NUMBER = -1;
+
   final Month month;
   /**
    * The {@link DateSelector} dictating the draw behavior of {@link #getView(int, View, ViewGroup)}.
@@ -59,10 +65,17 @@ class MonthAdapter extends BaseAdapter {
   CalendarStyle calendarStyle;
   final CalendarConstraints calendarConstraints;
 
-  MonthAdapter(Month month, DateSelector<?> dateSelector, CalendarConstraints calendarConstraints) {
+  @Nullable final DayViewDecorator dayViewDecorator;
+
+  MonthAdapter(
+      Month month,
+      DateSelector<?> dateSelector,
+      CalendarConstraints calendarConstraints,
+      @Nullable DayViewDecorator dayViewDecorator) {
     this.month = month;
     this.dateSelector = dateSelector;
     this.calendarConstraints = calendarConstraints;
+    this.dayViewDecorator = dayViewDecorator;
     this.previouslySelectedDates = dateSelector.getSelectedDays();
   }
 
@@ -110,37 +123,32 @@ class MonthAdapter extends BaseAdapter {
   @Override
   public TextView getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
     initializeStyles(parent.getContext());
-    TextView day = (TextView) convertView;
+    TextView dayTextView = (TextView) convertView;
     if (convertView == null) {
       LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-      day = (TextView) layoutInflater.inflate(R.layout.mtrl_calendar_day, parent, false);
+      dayTextView = (TextView) layoutInflater.inflate(R.layout.mtrl_calendar_day, parent, false);
     }
     int offsetPosition = position - firstPositionInMonth();
+    int dayNumber = NO_DAY_NUMBER;
     if (offsetPosition < 0 || offsetPosition >= month.daysInMonth) {
-      day.setVisibility(View.GONE);
-      day.setEnabled(false);
+      dayTextView.setVisibility(View.GONE);
+      dayTextView.setEnabled(false);
     } else {
-      int dayNumber = offsetPosition + 1;
+      dayNumber = offsetPosition + 1;
       // The tag and text uniquely identify the view within the MaterialCalendar for testing
-      day.setTag(month);
-      Locale locale = day.getResources().getConfiguration().locale;
-      day.setText(String.format(locale, "%d", dayNumber));
-      long dayInMillis = month.getDay(dayNumber);
-      if (month.year == Month.current().year) {
-        day.setContentDescription(DateStrings.getMonthDayOfWeekDay(dayInMillis));
-      } else {
-        day.setContentDescription(DateStrings.getYearMonthDayOfWeekDay(dayInMillis));
-      }
-      day.setVisibility(View.VISIBLE);
-      day.setEnabled(true);
+      dayTextView.setTag(month);
+      Locale locale = dayTextView.getResources().getConfiguration().locale;
+      dayTextView.setText(String.format(locale, "%d", dayNumber));
+      dayTextView.setVisibility(View.VISIBLE);
+      dayTextView.setEnabled(true);
     }
 
     Long date = getItem(position);
     if (date == null) {
-      return day;
+      return dayTextView;
     }
-    updateSelectedState(day, date);
-    return day;
+    updateSelectedState(dayTextView, date, dayNumber);
+    return dayTextView;
   }
 
   public void updateSelectedStates(MaterialCalendarGridView monthGrid) {
@@ -167,29 +175,98 @@ class MonthAdapter extends BaseAdapter {
           (TextView)
               monthGrid.getChildAt(
                   monthGrid.getAdapter().dayToPosition(day) - monthGrid.getFirstVisiblePosition()),
-          date);
+          date,
+          day);
     }
   }
 
-  private void updateSelectedState(@Nullable TextView day, long date) {
-    if (day == null) {
+  private void updateSelectedState(@Nullable TextView dayTextView, long date, int dayNumber) {
+    if (dayTextView == null) {
       return;
     }
+
+    Context context = dayTextView.getContext();
+    String contentDescription = getDayContentDescription(context, date);
+    dayTextView.setContentDescription(contentDescription);
+
     final CalendarItemStyle style;
-    if (calendarConstraints.getDateValidator().isValid(date)) {
-      day.setEnabled(true);
-      if (isSelected(date)) {
+    boolean valid = calendarConstraints.getDateValidator().isValid(date);
+    boolean selected = false;
+    if (valid) {
+      dayTextView.setEnabled(true);
+      selected = isSelected(date);
+      dayTextView.setSelected(selected);
+      if (selected) {
         style = calendarStyle.selectedDay;
-      } else if (UtcDates.getTodayCalendar().getTimeInMillis() == date) {
+      } else if (isToday(date)) {
         style = calendarStyle.todayDay;
       } else {
         style = calendarStyle.day;
       }
     } else {
-      day.setEnabled(false);
+      dayTextView.setEnabled(false);
       style = calendarStyle.invalidDay;
     }
-    style.styleItem(day);
+
+    if (dayViewDecorator != null && dayNumber != NO_DAY_NUMBER) {
+      int year = month.year;
+      int month = this.month.month;
+
+      ColorStateList backgroundColorOverride =
+          dayViewDecorator.getBackgroundColor(context, year, month, dayNumber, valid, selected);
+      ColorStateList textColorOverride =
+          dayViewDecorator.getTextColor(context, year, month, dayNumber, valid, selected);
+      style.styleItem(dayTextView, backgroundColorOverride, textColorOverride);
+
+      Drawable drawableLeft =
+          dayViewDecorator.getCompoundDrawableLeft(
+              context, year, month, dayNumber, valid, selected);
+      Drawable drawableTop =
+          dayViewDecorator.getCompoundDrawableTop(context, year, month, dayNumber, valid, selected);
+      Drawable drawableRight =
+          dayViewDecorator.getCompoundDrawableRight(
+              context, year, month, dayNumber, valid, selected);
+      Drawable drawableBottom =
+          dayViewDecorator.getCompoundDrawableBottom(
+              context, year, month, dayNumber, valid, selected);
+      dayTextView.setCompoundDrawables(drawableLeft, drawableTop, drawableRight, drawableBottom);
+
+      CharSequence decoratorContentDescription =
+          dayViewDecorator.getContentDescription(
+              context, year, month, dayNumber, valid, selected, contentDescription);
+      dayTextView.setContentDescription(decoratorContentDescription);
+    } else {
+      style.styleItem(dayTextView);
+    }
+  }
+
+  private String getDayContentDescription(Context context, long date) {
+    return DateStrings.getDayContentDescription(
+        context, date, isToday(date), isStartOfRange(date), isEndOfRange(date));
+  }
+
+  private boolean isToday(long date) {
+    return UtcDates.getTodayCalendar().getTimeInMillis() == date;
+  }
+
+  @VisibleForTesting
+  boolean isStartOfRange(long date) {
+    for (Pair<Long, Long> range : dateSelector.getSelectedRanges()) {
+      if (range.first != null && range.first == date) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @VisibleForTesting
+  boolean isEndOfRange(long date) {
+    for (Pair<Long, Long> range : dateSelector.getSelectedRanges()) {
+      if (range.second != null && range.second == date) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean isSelected(long date) {
@@ -265,5 +342,92 @@ class MonthAdapter extends BaseAdapter {
    */
   boolean isLastInRow(int position) {
     return (position + 1) % month.daysInWeek == 0;
+  }
+
+  /**
+   * Returns true if the day at the given adapter position is within the current month, and valid
+   * according to the {@link CalendarConstraints}.
+   */
+  boolean isDayPositionValid(int position) {
+    Long day = getItem(position);
+    return day != null && calendarConstraints.getDateValidator().isValid(day);
+  }
+
+  /**
+   * Finds the closest valid day to the given position searching forward.
+   *
+   * @param position The starting position.
+   * @return The position of the next valid day, or -1 if none is found before reaching the
+   *     end of the month.
+   */
+  int findNextValidDayPosition(int position) {
+    for (int i = position + 1; i <= lastPositionInMonth(); i++) {
+      if (isDayPositionValid(i)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Finds the closest valid day to the given position searching backward.
+   *
+   * @param position The starting position.
+   * @return The position of the previous valid day, or -1 if none is found before reaching the
+   *     start of the month.
+   */
+  int findPreviousValidDayPosition(int position) {
+    for (int i = position - 1; i >= firstPositionInMonth(); i--) {
+      if (isDayPositionValid(i)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Returns the adapter position of the first day in the month that is valid, or -1 if no days
+   * are valid.
+   */
+  int findFirstValidDayPosition() {
+    return findNextValidDayPosition(firstPositionInMonth() - 1);
+  }
+
+  /**
+   * Returns the adapter position of the last day in the month that is valid, or -1 if no days are
+   * valid.
+   */
+  int findLastValidDayPosition() {
+    return findPreviousValidDayPosition(lastPositionInMonth() + 1);
+  }
+
+  /**
+   * Finds the nearest valid day to the given position in the same row.
+   *
+   * @param position The starting position.
+   * @return The position of the nearest valid day in the same row, or -1 if no valid day is found
+   *     in the row.
+   */
+  int findNearestValidDayPositionInRow(int position) {
+    if (isDayPositionValid(position)) {
+      return position;
+    }
+
+    long rowId = getItemId(position);
+    for (int i = 1; i < month.daysInWeek; i++) {
+      int rightPosition = position + i;
+      if (rightPosition < getCount()
+          && getItemId(rightPosition) == rowId
+          && isDayPositionValid(rightPosition)) {
+        return rightPosition;
+      }
+      int leftPosition = position - i;
+      if (leftPosition >= 0
+          && getItemId(leftPosition) == rowId
+          && isDayPositionValid(leftPosition)) {
+        return leftPosition;
+      }
+    }
+    return -1;
   }
 }

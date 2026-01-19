@@ -33,6 +33,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:touchscreenBlocksFocus="false"
         android:fitsSystemWindows="true">
 
       <androidx.appcompat.widget.Toolbar
@@ -40,27 +41,88 @@
           style="?attr/catalogToolbarStyle"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
+          android:touchscreenBlocksFocus="false"
           app:navigationIcon="@drawable/ic_drawer_menu_24px"
           app:title="@string/cat_navigationdrawer_title"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <TextView
+    <LinearLayout
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:gravity="center"
+      android:padding="64dp"
+      android:orientation="vertical">
+
+      <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
         android:gravity="center"
         android:text="@string/cat_navigationdrawer_instructions"
-        android:textAppearance="?attr/textAppearanceBodyLarge"
-        android:padding="64dp" />
+        android:textAppearance="?attr/textAppearanceBodyLarge" />
 
+      <Button
+        android:id="@+id/show_end_drawer_gravity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="@string/cat_navigationdrawer_show_end_drawer" />
+
+      <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_gravity="end|center_vertical"
+          android:labelFor="@+id/bold_text_switch"
+          android:text="@string/cat_navigationdrawer_label_active_bold" />
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/bold_text_switch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:checked="true"
+          android:layout_marginStart="12dp" />
+      </LinearLayout>
+
+      <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_gravity="end|center_vertical"
+          android:labelFor="@+id/auto_close_switch"
+          android:text="@string/cat_navigationdrawer_label_auto_close" />
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/auto_close_switch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:checked="true"
+          android:layout_marginStart="12dp" />
+      </LinearLayout>
+
+    </LinearLayout>
   </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
   <com.google.android.material.navigation.NavigationView
-      android:id="@+id/navigation_view"
+      android:id="@+id/navigation_view_start"
       android:layout_width="wrap_content"
       android:layout_height="match_parent"
       android:layout_gravity="start"
       app:headerLayout="@layout/cat_navigationdrawer_header"
+      app:itemTextAppearanceActiveBoldEnabled="true"
       app:menu="@menu/cat_navigationdrawer_menu"/>
+
+  <com.google.android.material.navigation.NavigationView
+    android:id="@+id/navigation_view_end"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    app:headerLayout="@layout/cat_navigationdrawer_header"
+    app:itemTextAppearanceActiveBoldEnabled="true"
+    app:menu="@menu/cat_navigationdrawer_menu"/>
 
 </androidx.drawerlayout.widget.DrawerLayout>

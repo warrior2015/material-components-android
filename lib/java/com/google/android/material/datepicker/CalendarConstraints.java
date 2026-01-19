@@ -15,17 +15,16 @@
  */
 package com.google.android.material.datepicker;
 
-import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
-
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import androidx.core.util.ObjectsCompat;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Objects;
 
 /**
  * Used to limit the display range of the calendar and set an openAt month.
@@ -63,6 +62,9 @@ public final class CalendarConstraints implements Parcelable {
       @NonNull DateValidator validator,
       @Nullable Month openAt,
       int firstDayOfWeek) {
+    Objects.requireNonNull(start, "start cannot be null");
+    Objects.requireNonNull(end, "end cannot be null");
+    Objects.requireNonNull(validator, "validator cannot be null");
     this.start = start;
     this.end = end;
     this.openAt = openAt;
@@ -135,6 +137,25 @@ public final class CalendarConstraints implements Parcelable {
    */
   int getYearSpan() {
     return yearSpan;
+  }
+
+  /** Returns the earliest time in milliseconds allowed by this set of bounds. */
+  public long getStartMs() {
+    return start.timeInMillis;
+  }
+
+  /** Returns the latest time in milliseconds allowed by this set of bounds. */
+  public long getEndMs() {
+    return end.timeInMillis;
+  }
+
+  /**
+   * Returns the openAt time in milliseconds within this set of bounds. Returns null if not
+   * available.
+   */
+  @Nullable
+  public Long getOpenAtMs() {
+    return openAt == null ? null : openAt.timeInMillis;
   }
 
   @Override
@@ -267,6 +288,7 @@ public final class CalendarConstraints implements Parcelable {
      * }</pre>
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Builder setStart(long month) {
       start = month;
       return this;
@@ -294,6 +316,7 @@ public final class CalendarConstraints implements Parcelable {
      * }</pre>
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Builder setEnd(long month) {
       end = month;
       return this;
@@ -321,6 +344,7 @@ public final class CalendarConstraints implements Parcelable {
      * }</pre>
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Builder setOpenAt(long month) {
       openAt = month;
       return this;
@@ -329,11 +353,9 @@ public final class CalendarConstraints implements Parcelable {
     /**
      * Sets what the first day of the week is; e.g., <code>Calendar.SUNDAY</code> in the U.S.,
      * <code>Calendar.MONDAY</code> in France.
-     *
-     * @hide
      */
-    @RestrictTo(LIBRARY_GROUP)
     @NonNull
+    @CanIgnoreReturnValue
     public Builder setFirstDayOfWeek(int firstDayOfWeek) {
       this.firstDayOfWeek = firstDayOfWeek;
       return this;
@@ -344,7 +366,9 @@ public final class CalendarConstraints implements Parcelable {
      * to all dates as valid.
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Builder setValidator(@NonNull DateValidator validator) {
+      Objects.requireNonNull(validator, "validator cannot be null");
       this.validator = validator;
       return this;
     }

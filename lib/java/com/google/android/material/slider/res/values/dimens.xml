@@ -21,6 +21,9 @@
   <dimen name="mtrl_slider_track_side_padding">16dp</dimen>
   <dimen name="mtrl_slider_track_height">4dp</dimen>
 
+  <dimen name="mtrl_slider_tick_radius">1dp</dimen>
+  <dimen name="mtrl_slider_tick_min_spacing">8dp</dimen>
+
   <dimen name="mtrl_slider_thumb_radius">10dp</dimen>
   <dimen name="mtrl_slider_thumb_elevation">1dp</dimen>
 
@@ -31,5 +34,6 @@
   <dimen name="mtrl_slider_label_padding">4dp</dimen>
 
   <dimen name="m3_slider_thumb_elevation">2dp</dimen>
+  <dimen name="m3_slider_track_icon_padding">10dp</dimen>
 
 </resources>

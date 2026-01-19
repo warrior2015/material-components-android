@@ -17,38 +17,29 @@
 package com.google.android.material.slider;
 
 import static android.os.Looper.getMainLooper;
-import static com.google.android.material.slider.RtlTestUtils.applyRtlPseudoLocale;
-import static com.google.android.material.slider.RtlTestUtils.checkAppSupportsRtl;
-import static com.google.android.material.slider.RtlTestUtils.checkPlatformSupportsRtl;
+import static com.google.android.material.testing.RtlTestUtils.applyRtlPseudoLocale;
+import static com.google.android.material.testing.RtlTestUtils.checkAppSupportsRtl;
 import static com.google.common.truth.Truth.assertThat;
 import static org.robolectric.Shadows.shadowOf;
 
-import android.os.Build.VERSION_CODES;
 import android.view.KeyEvent;
 import android.view.View;
-import androidx.annotation.RequiresApi;
 import com.google.android.material.slider.KeyUtils.KeyEventBuilder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
-import org.junit.Ignore;
-
-/**
- * Tests for key handling of {@link Slider} in right-to-left layout.
- */
+/** Tests for key handling of {@link Slider} in right-to-left layout. */
 @RunWith(RobolectricTestRunner.class)
-@Ignore("Fix RTL support for Robolectric tests.")
+@org.junit.Ignore("(b/265311943) Fix RTL support for Robolectric tests.")
 public final class SliderKeyTestRtl extends SliderKeyTestCommon {
 
   @Before
   public void checkRtl() {
-    checkPlatformSupportsRtl();
     checkAppSupportsRtl();
   }
 
-  @RequiresApi(api = VERSION_CODES.JELLY_BEAN_MR1)
   @Override
   public void createSlider() {
     applyRtlPseudoLocale();
@@ -73,23 +64,10 @@ public final class SliderKeyTestRtl extends SliderKeyTestCommon {
   }
 
   @Test
-  public void testMoveThumbFocus_dPad_correctThumbHasFocus() {
-    slider.requestFocus();
-
-    KeyEventBuilder left = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_LEFT);
-    KeyEventBuilder right = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_RIGHT);
-
-    // We start at far right in RTL so go left first, then go back right.
-    sendKeyEventThereAndBack(left, right);
-  }
-
-  @Test
-  public void testActivateThirdThumb_moveRight_movesThirdThumbRight() {
+  public void testFocusThirdThumb_moveRight_movesThirdThumbRight() {
     slider.requestFocus();
 
     slider.setFocusedThumbIndex(2);
-
-    activateFocusedThumb();
 
     KeyEventBuilder right = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_RIGHT);
     for (int i = 0; i < 3; i++) {
@@ -101,11 +79,9 @@ public final class SliderKeyTestRtl extends SliderKeyTestCommon {
   }
 
   @Test
-  public void testActivateThirdThumb_moveLeft_movesThirdThumbLeft() {
+  public void testFocusThirdThumb_moveLeft_movesThirdThumbLeft() {
     slider.requestFocus();
     slider.setFocusedThumbIndex(2);
-
-    activateFocusedThumb();
 
     KeyEventBuilder left = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_LEFT);
     for (int i = 0; i < 20; i++) {
@@ -114,5 +90,29 @@ public final class SliderKeyTestRtl extends SliderKeyTestCommon {
 
     // Moving left increments in RTL.
     assertThat(slider.getValues()).doesNotContain(3.0f);
+  }
+
+  @Test
+  public void testKeyPress_dPadLeft_incrementsValue() {
+    slider.requestFocus();
+    slider.setValues(50f);
+    slider.setStepSize(1f);
+
+    KeyEventBuilder left = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_LEFT);
+    left.dispatchEvent(slider);
+
+    assertThat(slider.getValues().get(0)).isEqualTo(51f);
+  }
+
+  @Test
+  public void testKeyPress_dPadRight_decrementsValue() {
+    slider.requestFocus();
+    slider.setValues(50f);
+    slider.setStepSize(1f);
+
+    KeyEventBuilder right = new KeyEventBuilder(KeyEvent.KEYCODE_DPAD_RIGHT);
+    right.dispatchEvent(slider);
+
+    assertThat(slider.getValues().get(0)).isEqualTo(49f);
   }
 }

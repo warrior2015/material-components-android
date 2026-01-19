@@ -18,6 +18,8 @@ package io.material.catalog.bottomappbar;
 
 import io.material.catalog.R;
 
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -27,6 +29,11 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
+import android.widget.LinearLayout;
+import androidx.activity.BackEventCompat;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,6 +41,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.bottomappbar.BottomAppBarTopEdgeTreatment;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetBehavior.BottomSheetCallback;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -45,14 +53,39 @@ import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.snackbar.Snackbar;
 import io.material.catalog.feature.DemoFragment;
 import io.material.catalog.feature.DemoUtils;
-import io.material.catalog.feature.OnBackPressedHandler;
 import io.material.catalog.preferences.CatalogPreferencesHelper;
 import java.util.List;
 
 /** A fragment that displays the main Bottom App Bar demos for the Catalog app. */
-public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBackPressedHandler {
+public class BottomAppBarMainDemoFragment extends DemoFragment {
+
+  private AccessibilityManager am;
+
+  private final OnBackPressedCallback bottomDrawerOnBackPressedCallback =
+      new OnBackPressedCallback(/* enabled= */ false) {
+        @Override
+        public void handleOnBackStarted(@NonNull BackEventCompat backEvent) {
+          bottomDrawerBehavior.startBackProgress(backEvent);
+        }
+
+        @Override
+        public void handleOnBackProgressed(@NonNull BackEventCompat backEvent) {
+          bottomDrawerBehavior.updateBackProgress(backEvent);
+        }
+
+        @Override
+        public void handleOnBackPressed() {
+          bottomDrawerBehavior.handleBackInvoked();
+        }
+
+        @Override
+        public void handleOnBackCancelled() {
+          bottomDrawerBehavior.cancelBackProgress();
+        }
+      };
 
   protected BottomAppBar bar;
+  protected View barNavView;
   protected CoordinatorLayout coordinatorLayout;
   protected FloatingActionButton fab;
 
@@ -71,7 +104,7 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
 
   @Override
   public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
-    menuInflater.inflate(R.menu.demo_primary, menu);
+    menuInflater.inflate(R.menu.demo_primary_alternate, menu);
   }
 
   @Override
@@ -98,8 +131,10 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
     toolbar.setNavigationOnClickListener(v -> getActivity().onBackPressed());
 
     coordinatorLayout = view.findViewById(R.id.coordinator_layout);
+    LinearLayout content = view.findViewById(R.id.bottomappbar_content);
     bar = view.findViewById(R.id.bar);
     ((AppCompatActivity) getActivity()).setSupportActionBar(bar);
+    barNavView = bar.getChildAt(0);
 
     setUpBottomDrawer(view);
 
@@ -112,9 +147,15 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
           return false;
         });
 
+    if (VERSION.SDK_INT >= VERSION_CODES.M) {
+      am = getContext().getSystemService(AccessibilityManager.class);
+      if (am != null && am.isTouchExplorationEnabled()) {
+        bar.post(() -> content.setPadding(0, content.getPaddingTop(), 0, bar.getMeasuredHeight()));
+      }
+    }
+
     setUpDemoControls(view);
     setUpBottomAppBarShapeAppearance();
-
     return view;
   }
 
@@ -141,84 +182,17 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
     showFabButton.setOnClickListener(v -> fab.show());
     hideFabButton.setOnClickListener(v -> fab.hide());
 
-    // Set up FAB alignment mode toggle buttons.
-    MaterialButton centerButton = view.findViewById(R.id.fab_position_button_center);
-    MaterialButton endButton = view.findViewById(R.id.fab_position_button_end);
-
-    if (bar.getFabAlignmentMode() == BottomAppBar.FAB_ALIGNMENT_MODE_CENTER) {
-      centerButton.setChecked(true);
-    } else {
-      endButton.setChecked(true);
-    }
-
-    centerButton.setOnClickListener(
-        v ->
-            bar.setFabAlignmentModeAndReplaceMenu(
-                BottomAppBar.FAB_ALIGNMENT_MODE_CENTER, R.menu.demo_primary));
-    endButton.setOnClickListener(
-        v ->
-            bar.setFabAlignmentModeAndReplaceMenu(
-                BottomAppBar.FAB_ALIGNMENT_MODE_END, R.menu.demo_primary_alternate));
-
-    // Set up FAB animation mode toggle buttons.
-    MaterialButton slideButton = view.findViewById(R.id.fab_animation_mode_button_slide);
-    MaterialButton scaleButton = view.findViewById(R.id.fab_animation_mode_button_scale);
-
-    if (bar.getFabAnimationMode() == BottomAppBar.FAB_ANIMATION_MODE_SCALE) {
-      scaleButton.setChecked(true);
-    } else {
-      slideButton.setChecked(true);
-    }
-
-    scaleButton.setOnClickListener(
-        v -> bar.setFabAnimationMode(BottomAppBar.FAB_ANIMATION_MODE_SCALE));
-    slideButton.setOnClickListener(
-        v -> bar.setFabAnimationMode(BottomAppBar.FAB_ANIMATION_MODE_SLIDE));
-
-    // Set up FAB anchor mode toggle buttons.
-    MaterialButton embedButton = view.findViewById(R.id.fab_anchor_mode_button_embed);
-    MaterialButton cradleButton = view.findViewById(R.id.fab_anchor_mode_button_cradle);
-
-    if (bar.getFabAnchorMode() == BottomAppBar.FAB_ANCHOR_MODE_EMBED) {
-      embedButton.setChecked(true);
-    } else {
-      cradleButton.setChecked(true);
-    }
-
-    embedButton.setOnClickListener(
-        v -> bar.setFabAnchorMode(BottomAppBar.FAB_ANCHOR_MODE_EMBED));
-    cradleButton.setOnClickListener(
-        v -> bar.setFabAnchorMode(BottomAppBar.FAB_ANCHOR_MODE_CRADLE));
-
-    // Set up menu alignment toggle buttons.
-    MaterialButton menuAlignmentAutoButton = view.findViewById(R.id.menu_alignment_auto);
-    MaterialButton menuAlignmentStartButton = view.findViewById(R.id.menu_alignment_start);
-
-    if (bar.getMenuAlignmentMode() == BottomAppBar.MENU_ALIGNMENT_MODE_AUTO) {
-      menuAlignmentAutoButton.setChecked(true);
-    } else {
-      menuAlignmentStartButton.setChecked(true);
-    }
-
-    menuAlignmentAutoButton.setOnClickListener(
-        v -> bar.setMenuAlignmentMode(BottomAppBar.MENU_ALIGNMENT_MODE_AUTO));
-    menuAlignmentStartButton.setOnClickListener(
-        v -> bar.setMenuAlignmentMode(BottomAppBar.MENU_ALIGNMENT_MODE_START));
-
     // Set up hide on scroll switch.
     MaterialSwitch barScrollSwitch = view.findViewById(R.id.bar_scroll_switch);
     barScrollSwitch.setChecked(bar.getHideOnScroll());
     barScrollSwitch.setOnCheckedChangeListener(
-        (buttonView, isChecked) -> bar.setHideOnScroll(isChecked));
-  }
-
-  @Override
-  public boolean onBackPressed() {
-    if (bottomDrawerBehavior.getState() != BottomSheetBehavior.STATE_HIDDEN) {
-      bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-      return true;
-    }
-    return false;
+        (buttonView, isChecked) -> {
+          if (am != null && am.isTouchExplorationEnabled()) {
+            bar.setHideOnScroll(false);
+          } else {
+            bar.setHideOnScroll(isChecked);
+          }
+        });
   }
 
   @Override
@@ -251,12 +225,48 @@ public class BottomAppBarMainDemoFragment extends DemoFragment implements OnBack
   protected void setUpBottomDrawer(View view) {
     View bottomDrawer = coordinatorLayout.findViewById(R.id.bottom_drawer);
     bottomDrawerBehavior = BottomSheetBehavior.from(bottomDrawer);
+    bottomDrawerBehavior.setUpdateImportantForAccessibilityOnSiblings(true);
     bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    bottomDrawer.post(() -> updateBackHandlingEnabled(bottomDrawerBehavior.getState()));
+    bottomDrawerBehavior.addBottomSheetCallback(
+        new BottomSheetCallback() {
+          @Override
+          public void onStateChanged(@NonNull View bottomSheet, int newState) {
+            updateBackHandlingEnabled(newState);
+
+            if (newState == BottomSheetBehavior.STATE_HIDDEN) {
+              barNavView.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+            }
+          }
+
+          @Override
+          public void onSlide(@NonNull View bottomSheet, float slideOffset) {}
+        });
+
+    requireActivity()
+        .getOnBackPressedDispatcher()
+        .addCallback(this, bottomDrawerOnBackPressedCallback);
 
     bar.setNavigationOnClickListener(
         v -> bottomDrawerBehavior.setState(BottomSheetBehavior.STATE_HALF_EXPANDED));
-    bar.setNavigationIcon(R.drawable.ic_drawer_menu_24px);
-    bar.replaceMenu(R.menu.demo_primary);
+  }
+
+  private void updateBackHandlingEnabled(int state) {
+    switch (state) {
+      case BottomSheetBehavior.STATE_EXPANDED:
+      case BottomSheetBehavior.STATE_HALF_EXPANDED:
+      case BottomSheetBehavior.STATE_COLLAPSED:
+        bottomDrawerOnBackPressedCallback.setEnabled(true);
+        break;
+      case BottomSheetBehavior.STATE_HIDDEN:
+        bottomDrawerOnBackPressedCallback.setEnabled(false);
+        break;
+      case BottomSheetBehavior.STATE_DRAGGING:
+      case BottomSheetBehavior.STATE_SETTLING:
+      default:
+        // Do nothing, only change callback enabled for "stable" states.
+        break;
+    }
   }
 
   private void showSnackbar(CharSequence text) {

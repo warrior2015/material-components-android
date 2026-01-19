@@ -19,6 +19,7 @@ package io.material.catalog.card;
 import io.material.catalog.R;
 
 import androidx.recyclerview.widget.RecyclerView;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,12 +27,12 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.ItemKeyProvider;
 import androidx.recyclerview.selection.SelectionTracker;
 import com.google.android.material.card.MaterialCardView;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /** An Adapter that works with a collection of selectable card items */
@@ -98,18 +99,51 @@ class SelectableCardsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
       subtitleView.setText(item.subtitle);
       if (selectionTracker != null) {
         bindSelectedState();
+        materialCardView.setOnKeyListener(
+            (v, keyCode, event) -> {
+              if (event.getAction() == KeyEvent.ACTION_DOWN
+                  && (keyCode == KeyEvent.KEYCODE_ENTER
+                      || keyCode == KeyEvent.KEYCODE_DPAD_CENTER)) {
+                Long selectionKey = details.getSelectionKey();
+                if (selectionKey != null) {
+                  if (selectionTracker.isSelected(selectionKey)) {
+                    selectionTracker.deselect(selectionKey);
+                  } else {
+                    selectionTracker.select(selectionKey);
+                  }
+                  return true;
+                }
+              }
+              return false;
+            });
+      } else {
+        materialCardView.setOnKeyListener(null);
       }
-      // Set an OnLongClickListener for accessibility
-      materialCardView.setOnLongClickListener(
-          v -> {
-            selectionTracker.setItemsSelected(
-                Arrays.asList(details.getSelectionKey()), !materialCardView.isChecked());
-            return true;
-          });
     }
 
     private void bindSelectedState() {
-      materialCardView.setChecked(selectionTracker.isSelected(details.getSelectionKey()));
+      Long selectionKey = details.getSelectionKey();
+      materialCardView.setChecked(selectionTracker.isSelected(selectionKey));
+      if (selectionKey != null) {
+        addAccessibilityActions(selectionKey);
+      }
+    }
+
+    private void addAccessibilityActions(@NonNull Long selectionKey) {
+      ViewCompat.addAccessibilityAction(
+          materialCardView,
+          materialCardView.getContext().getString(R.string.cat_card_action_select),
+          (view, arguments) -> {
+            selectionTracker.select(selectionKey);
+            return true;
+          });
+      ViewCompat.addAccessibilityAction(
+          materialCardView,
+          materialCardView.getContext().getString(R.string.cat_card_action_deselect),
+          (view, arguments) -> {
+            selectionTracker.deselect(selectionKey);
+            return true;
+          });
     }
 
     ItemDetailsLookup.ItemDetails<Long> getItemDetails() {
@@ -173,8 +207,7 @@ class SelectableCardsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     long position;
 
-    Details() {
-    }
+    Details() {}
 
     @Override
     public int getPosition() {

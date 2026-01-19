@@ -19,6 +19,7 @@ package com.google.android.material.textfield;
 import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.graphics.Region.Op;
+import android.graphics.drawable.Drawable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import androidx.annotation.NonNull;
@@ -31,29 +32,42 @@ import com.google.android.material.shape.ShapeAppearanceModel;
  * outline mode.
  */
 class CutoutDrawable extends MaterialShapeDrawable {
-  @NonNull private final RectF cutoutBounds;
+  @NonNull CutoutDrawableState drawableState;
 
-  CutoutDrawable() {
-    this(null);
+  static CutoutDrawable create(@Nullable ShapeAppearanceModel shapeAppearanceModel) {
+    return create(new CutoutDrawableState(
+        shapeAppearanceModel != null ? shapeAppearanceModel : new ShapeAppearanceModel(),
+        new RectF()));
   }
 
-  CutoutDrawable(@Nullable ShapeAppearanceModel shapeAppearanceModel) {
-    super(shapeAppearanceModel != null ? shapeAppearanceModel : new ShapeAppearanceModel());
-    cutoutBounds = new RectF();
+  private static CutoutDrawable create(@NonNull CutoutDrawableState drawableState) {
+    return new ImplApi18(drawableState);
+  }
+
+  private CutoutDrawable(@NonNull CutoutDrawableState drawableState) {
+    super(drawableState);
+    this.drawableState = drawableState;
+  }
+
+  @NonNull
+  @Override
+  public Drawable mutate() {
+    drawableState = new CutoutDrawableState(drawableState);
+    return this;
   }
 
   boolean hasCutout() {
-    return !cutoutBounds.isEmpty();
+    return !drawableState.cutoutBounds.isEmpty();
   }
 
   void setCutout(float left, float top, float right, float bottom) {
     // Avoid expensive redraws by only calling invalidateSelf if one of the cutout's dimensions has
     // changed.
-    if (left != cutoutBounds.left
-        || top != cutoutBounds.top
-        || right != cutoutBounds.right
-        || bottom != cutoutBounds.bottom) {
-      cutoutBounds.set(left, top, right, bottom);
+    if (left != drawableState.cutoutBounds.left
+        || top != drawableState.cutoutBounds.top
+        || right != drawableState.cutoutBounds.right
+        || bottom != drawableState.cutoutBounds.bottom) {
+      drawableState.cutoutBounds.set(left, top, right, bottom);
       invalidateSelf();
     }
   }
@@ -67,20 +81,50 @@ class CutoutDrawable extends MaterialShapeDrawable {
     setCutout(0, 0, 0, 0);
   }
 
-  @Override
-  protected void drawStrokeShape(@NonNull Canvas canvas) {
-    if (cutoutBounds.isEmpty()) {
-      super.drawStrokeShape(canvas);
-    } else {
-      // Saves the canvas so we can restore the clip after drawing the stroke.
-      canvas.save();
-      if (VERSION.SDK_INT >= VERSION_CODES.O) {
-        canvas.clipOutRect(cutoutBounds);
+  private static class ImplApi18 extends CutoutDrawable {
+    ImplApi18(@NonNull CutoutDrawableState drawableState) {
+      super(drawableState);
+    }
+
+    @Override
+    protected void drawStrokeShape(@NonNull Canvas canvas) {
+      if (drawableState.cutoutBounds.isEmpty()) {
+        super.drawStrokeShape(canvas);
       } else {
-        canvas.clipRect(cutoutBounds, Op.DIFFERENCE);
+        // Saves the canvas so we can restore the clip after drawing the stroke.
+        canvas.save();
+        if (VERSION.SDK_INT >= VERSION_CODES.O) {
+          canvas.clipOutRect(drawableState.cutoutBounds);
+        } else {
+          canvas.clipRect(drawableState.cutoutBounds, Op.DIFFERENCE);
+        }
+        super.drawStrokeShape(canvas);
+        canvas.restore();
       }
-      super.drawStrokeShape(canvas);
-      canvas.restore();
+    }
+  }
+
+  private static final class CutoutDrawableState extends MaterialShapeDrawableState {
+    @NonNull private final RectF cutoutBounds;
+
+    private CutoutDrawableState(
+        @NonNull ShapeAppearanceModel shapeAppearanceModel, @NonNull RectF cutoutBounds) {
+      super(shapeAppearanceModel, null);
+      this.cutoutBounds = cutoutBounds;
+    }
+
+    private CutoutDrawableState(@NonNull CutoutDrawableState state) {
+      super(state);
+      this.cutoutBounds = state.cutoutBounds;
+    }
+
+    @NonNull
+    @Override
+    public Drawable newDrawable() {
+      CutoutDrawable drawable = CutoutDrawable.create(this);
+      // Force the calculation of the path for the new drawable.
+      drawable.invalidateSelf();
+      return drawable;
     }
   }
 }

@@ -18,7 +18,12 @@ package io.material.catalog.datepicker;
 import io.material.catalog.R;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -63,7 +68,7 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     today = MaterialDatePicker.todayInUtcMilliseconds();
     Calendar calendar = getClearedUtc();
     calendar.setTimeInMillis(today);
-    calendar.roll(Calendar.MONTH, 1);
+    calendar.add(Calendar.MONTH, 1);
     nextMonth = calendar.getTimeInMillis();
 
     calendar.setTimeInMillis(today);
@@ -74,7 +79,7 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     decThisYear = calendar.getTimeInMillis();
 
     calendar.setTimeInMillis(today);
-    calendar.roll(Calendar.YEAR, 1);
+    calendar.add(Calendar.YEAR, 1);
     oneYearForward = calendar.getTimeInMillis();
 
     todayPair = new Pair<>(today, today);
@@ -89,8 +94,8 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     MaterialButton launcher = root.findViewById(R.id.cat_picker_launch_button);
 
     snackbar = Snackbar.make(viewGroup, R.string.cat_picker_no_action, Snackbar.LENGTH_LONG);
-    int dialogTheme = resolveOrThrow(getContext(), R.attr.materialCalendarTheme);
-    int fullscreenTheme = resolveOrThrow(getContext(), R.attr.materialCalendarFullscreenTheme);
+    int dialogTheme = resolveOrThrow(getContext(), com.google.android.material.R.attr.materialCalendarTheme);
+    int fullscreenTheme = resolveOrThrow(getContext(), com.google.android.material.R.attr.materialCalendarFullscreenTheme);
 
     final RadioGroup selectionMode = root.findViewById(R.id.cat_picker_date_selector_group);
     final RadioGroup theme = root.findViewById(R.id.cat_picker_theme_group);
@@ -100,6 +105,8 @@ public class DatePickerMainDemoFragment extends DemoFragment {
     final RadioGroup opening = root.findViewById(R.id.cat_picker_opening_month_group);
     final RadioGroup selection = root.findViewById(R.id.cat_picker_selection_group);
     final RadioGroup inputMode = root.findViewById(R.id.cat_picker_input_mode_group);
+    final RadioGroup dayViewDecoratorGroup =
+        root.findViewById(R.id.cat_picker_day_view_decorator_group);
     final RadioGroup positiveButton = root.findViewById(R.id.cat_picker_positive_button_group);
     final RadioGroup negativeButton = root.findViewById(R.id.cat_picker_negative_button_group);
 
@@ -114,6 +121,7 @@ public class DatePickerMainDemoFragment extends DemoFragment {
           int openingChoice = opening.getCheckedRadioButtonId();
           int selectionChoice = selection.getCheckedRadioButtonId();
           int inputModeChoices = inputMode.getCheckedRadioButtonId();
+          int dayViewDecoratorChoice = dayViewDecoratorGroup.getCheckedRadioButtonId();
           int positiveButtonChoice = positiveButton.getCheckedRadioButtonId();
           int negativeButtonChoice = negativeButton.getCheckedRadioButtonId();
 
@@ -132,15 +140,24 @@ public class DatePickerMainDemoFragment extends DemoFragment {
 
           if (titleChoice == R.id.cat_picker_title_custom) {
             builder.setTitleText(R.string.cat_picker_title_custom);
+          } else if (titleChoice == R.id.cat_picker_title_with_description) {
+            builder.setTheme(R.style.ThemeOverlay_Catalog_MaterialCalendar_WithDescription);
+            builder.setTitleText(getTitleWithDescription());
           }
 
           if (positiveButtonChoice == R.id.cat_picker_positive_button_custom) {
             builder.setPositiveButtonText(R.string.cat_picker_positive_button_text);
+            builder.setPositiveButtonContentDescription(
+                R.string.cat_picker_positive_button_content_description);
           }
 
           if (negativeButtonChoice == R.id.cat_picker_negative_button_custom) {
             builder.setNegativeButtonText(R.string.cat_picker_negative_button_text);
+            builder.setNegativeButtonContentDescription(
+                R.string.cat_picker_negative_button_content_description);
           }
+
+          setupDayViewDecorator(builder, dayViewDecoratorChoice);
 
           try {
             builder.setCalendarConstraints(constraintsBuilder.build());
@@ -242,6 +259,34 @@ public class DatePickerMainDemoFragment extends DemoFragment {
       constraintsBuilder.setValidator(CompositeDateValidator.anyOf(validatorsMultple));
     }
     return constraintsBuilder;
+  }
+
+  private CharSequence getTitleWithDescription() {
+    Context context = requireContext();
+    String alarmTimes = context.getString(R.string.cat_picker_title_description_colored);
+    String titleAndDescriptionText =
+        context.getString(R.string.cat_picker_title_description_main) + alarmTimes;
+    SpannableString spannable = new SpannableString(titleAndDescriptionText);
+    int alarmTimesColor = resolveOrThrow(context, androidx.appcompat.R.attr.colorPrimary);
+    int spanStart = titleAndDescriptionText.indexOf(alarmTimes);
+    int spanEnd = spanStart + alarmTimes.length();
+    spannable.setSpan(
+        new ForegroundColorSpan(alarmTimesColor),
+        spanStart,
+        spanEnd,
+        Spannable.SPAN_EXCLUSIVE_INCLUSIVE);
+    spannable.setSpan(
+        new StyleSpan(Typeface.BOLD), spanStart, spanEnd, Spannable.SPAN_EXCLUSIVE_INCLUSIVE);
+    return spannable;
+  }
+
+  private void setupDayViewDecorator(
+      MaterialDatePicker.Builder<?> builder, int dayViewDecoratorChoice) {
+    if (dayViewDecoratorChoice == R.id.cat_picker_day_view_decorator_dots) {
+      builder.setDayViewDecorator(new CircleIndicatorDecorator());
+    } else if (dayViewDecoratorChoice == R.id.cat_picker_day_view_decorator_highlights) {
+      builder.setDayViewDecorator(new BackgroundHighlightDecorator());
+    }
   }
 
   private static int resolveOrThrow(Context context, @AttrRes int attributeResId) {

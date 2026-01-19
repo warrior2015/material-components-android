@@ -25,11 +25,10 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.animation.TimeInterpolator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
 import androidx.appcompat.widget.AppCompatTextView;
 import android.text.TextUtils;
 import android.view.View;
@@ -47,10 +46,10 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleRes;
-import androidx.core.view.ViewCompat;
 import androidx.core.widget.TextViewCompat;
 import com.google.android.material.animation.AnimationUtils;
 import com.google.android.material.animation.AnimatorSetCompat;
+import com.google.android.material.motion.MotionUtils;
 import com.google.android.material.resources.MaterialResources;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -65,10 +64,17 @@ import java.util.List;
 final class IndicatorViewController {
 
   /** Duration for the caption's vertical translation animation. */
-  private static final int CAPTION_TRANSLATE_Y_ANIMATION_DURATION = 217;
+  private static final int DEFAULT_CAPTION_TRANSLATION_Y_ANIMATION_DURATION = 217;
 
-  /** Duration for the caption's opacity fade animation. */
-  private static final int CAPTION_OPACITY_FADE_ANIMATION_DURATION = 167;
+  /** Duration for the caption's fade animation. */
+  private static final int DEFAULT_CAPTION_FADE_ANIMATION_DURATION = 167;
+
+  private final int captionTranslationYAnimationDuration;
+  private final int captionFadeInAnimationDuration;
+  private final int captionFadeOutAnimationDuration;
+  @NonNull private final TimeInterpolator captionTranslationYAnimationInterpolator;
+  @NonNull private final TimeInterpolator captionFadeInAnimationInterpolator;
+  @NonNull private final TimeInterpolator captionFadeOutAnimationInterpolator;
 
   /**
    * Values for indicator indices. Indicators are views below the text input area, like a caption
@@ -110,6 +116,7 @@ final class IndicatorViewController {
   private boolean errorEnabled;
   @Nullable private TextView errorView;
   @Nullable private CharSequence errorViewContentDescription;
+  private int errorViewAccessibilityLiveRegion;
   private int errorTextAppearance;
   @Nullable private ColorStateList errorViewTextColor;
 
@@ -126,6 +133,28 @@ final class IndicatorViewController {
     this.textInputView = textInputView;
     this.captionTranslationYPx =
         context.getResources().getDimensionPixelSize(R.dimen.design_textinput_caption_translate_y);
+    captionTranslationYAnimationDuration =
+        MotionUtils.resolveThemeDuration(
+            context, R.attr.motionDurationShort4, DEFAULT_CAPTION_TRANSLATION_Y_ANIMATION_DURATION);
+    captionFadeInAnimationDuration =
+        MotionUtils.resolveThemeDuration(
+            context, R.attr.motionDurationMedium4, DEFAULT_CAPTION_FADE_ANIMATION_DURATION);
+    captionFadeOutAnimationDuration =
+        MotionUtils.resolveThemeDuration(
+            context, R.attr.motionDurationShort4, DEFAULT_CAPTION_FADE_ANIMATION_DURATION);
+    captionTranslationYAnimationInterpolator =
+        MotionUtils.resolveThemeInterpolator(
+            context,
+            R.attr.motionEasingEmphasizedDecelerateInterpolator,
+            AnimationUtils.LINEAR_OUT_SLOW_IN_INTERPOLATOR);
+    captionFadeInAnimationInterpolator =
+        MotionUtils.resolveThemeInterpolator(
+            context,
+            R.attr.motionEasingEmphasizedDecelerateInterpolator,
+            AnimationUtils.LINEAR_INTERPOLATOR);
+    captionFadeOutAnimationInterpolator =
+        MotionUtils.resolveThemeInterpolator(
+            context, R.attr.motionEasingLinearInterpolator, AnimationUtils.LINEAR_INTERPOLATOR);
   }
 
   void showHelper(final CharSequence helperText) {
@@ -192,7 +221,7 @@ final class IndicatorViewController {
    */
   private boolean shouldAnimateCaptionView(
       @Nullable TextView captionView, @NonNull final CharSequence captionText) {
-    return ViewCompat.isLaidOut(textInputView)
+    return textInputView.isLaidOut()
         && textInputView.isEnabled()
         && (captionToShow != captionDisplayed
             || captionView == null
@@ -256,6 +285,7 @@ final class IndicatorViewController {
             public void onAnimationStart(Animator animator) {
               if (captionViewToShow != null) {
                 captionViewToShow.setVisibility(VISIBLE);
+                captionViewToShow.setAlpha(0f);
               }
             }
           });
@@ -306,12 +336,20 @@ final class IndicatorViewController {
     if (captionView == null || !captionEnabled) {
       return;
     }
-    // If the caption view should be shown, set alpha to 1f.
-    if ((captionState == captionToShow) || (captionState == captionToHide)) {
-      captionAnimatorList.add(
-          createCaptionOpacityAnimator(captionView, captionToShow == captionState));
-      if (captionToShow == captionState) {
-        captionAnimatorList.add(createCaptionTranslationYAnimator(captionView));
+    boolean shouldShowOrHide = (captionState == captionToShow) || (captionState == captionToHide);
+    if (shouldShowOrHide) {
+      // If the caption view should be shown, set alpha accordingly.
+      Animator animator = createCaptionOpacityAnimator(captionView, captionToShow == captionState);
+      boolean enableShowAnimation =
+          captionState == captionToShow && captionToHide != CAPTION_STATE_NONE;
+      if (enableShowAnimation) {
+        animator.setStartDelay(captionFadeOutAnimationDuration);
+      }
+      captionAnimatorList.add(animator);
+      if (captionToShow == captionState && captionToHide != CAPTION_STATE_NONE) {
+        Animator translationYAnimator = createCaptionTranslationYAnimator(captionView);
+        translationYAnimator.setStartDelay(captionFadeOutAnimationDuration);
+        captionAnimatorList.add(translationYAnimator);
       }
     }
   }
@@ -319,16 +357,18 @@ final class IndicatorViewController {
   private ObjectAnimator createCaptionOpacityAnimator(TextView captionView, boolean display) {
     float endValue = display ? 1f : 0f;
     ObjectAnimator opacityAnimator = ObjectAnimator.ofFloat(captionView, View.ALPHA, endValue);
-    opacityAnimator.setDuration(CAPTION_OPACITY_FADE_ANIMATION_DURATION);
-    opacityAnimator.setInterpolator(AnimationUtils.LINEAR_INTERPOLATOR);
+    opacityAnimator.setDuration(display ? captionFadeInAnimationDuration
+        : captionFadeOutAnimationDuration);
+    opacityAnimator.setInterpolator(display ? captionFadeInAnimationInterpolator
+        : captionFadeOutAnimationInterpolator);
     return opacityAnimator;
   }
 
   private ObjectAnimator createCaptionTranslationYAnimator(TextView captionView) {
     ObjectAnimator translationYAnimator =
         ObjectAnimator.ofFloat(captionView, TRANSLATION_Y, -captionTranslationYPx, 0f);
-    translationYAnimator.setDuration(CAPTION_TRANSLATE_Y_ANIMATION_DURATION);
-    translationYAnimator.setInterpolator(AnimationUtils.LINEAR_OUT_SLOW_IN_INTERPOLATOR);
+    translationYAnimator.setDuration(captionTranslationYAnimationDuration);
+    translationYAnimator.setInterpolator(captionTranslationYAnimationInterpolator);
     return translationYAnimator;
   }
 
@@ -359,12 +399,11 @@ final class IndicatorViewController {
     if (canAdjustIndicatorPadding()) {
       EditText editText = textInputView.getEditText();
       boolean isFontScaleLarge = MaterialResources.isFontScaleAtLeast1_3(context);
-      ViewCompat.setPaddingRelative(
-          indicatorArea,
+      indicatorArea.setPaddingRelative(
           getIndicatorPadding(
               isFontScaleLarge,
               R.dimen.material_helper_text_font_1_3_padding_horizontal,
-              ViewCompat.getPaddingStart(editText)),
+              editText.getPaddingStart()),
           getIndicatorPadding(
               isFontScaleLarge,
               R.dimen.material_helper_text_font_1_3_padding_top,
@@ -374,7 +413,7 @@ final class IndicatorViewController {
           getIndicatorPadding(
               isFontScaleLarge,
               R.dimen.material_helper_text_font_1_3_padding_horizontal,
-              ViewCompat.getPaddingEnd(editText)),
+              editText.getPaddingEnd()),
           0);
     }
   }
@@ -450,17 +489,15 @@ final class IndicatorViewController {
     if (enabled) {
       errorView = new AppCompatTextView(context);
       errorView.setId(R.id.textinput_error);
-      if (VERSION.SDK_INT >= 17) {
-        errorView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-      }
+      errorView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
       if (typeface != null) {
         errorView.setTypeface(typeface);
       }
       setErrorTextAppearance(errorTextAppearance);
       setErrorViewTextColor(errorViewTextColor);
       setErrorContentDescription(errorViewContentDescription);
+      setErrorAccessibilityLiveRegion(errorViewAccessibilityLiveRegion);
       errorView.setVisibility(View.INVISIBLE);
-      ViewCompat.setAccessibilityLiveRegion(errorView, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
       addIndicator(errorView, ERROR_INDEX);
     } else {
       hideError();
@@ -492,32 +529,27 @@ final class IndicatorViewController {
     if (enabled) {
       helperTextView = new AppCompatTextView(context);
       helperTextView.setId(R.id.textinput_helper_text);
-      if (VERSION.SDK_INT >= 17) {
-        helperTextView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-      }
+      helperTextView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
       if (typeface != null) {
         helperTextView.setTypeface(typeface);
       }
       helperTextView.setVisibility(View.INVISIBLE);
-      ViewCompat.setAccessibilityLiveRegion(
-          helperTextView, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
+      helperTextView.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
       setHelperTextAppearance(helperTextTextAppearance);
       setHelperTextViewTextColor(helperTextViewTextColor);
       addIndicator(helperTextView, HELPER_INDEX);
-      if (VERSION.SDK_INT >= VERSION_CODES.JELLY_BEAN_MR1) {
-        helperTextView.setAccessibilityDelegate(
-            new AccessibilityDelegate() {
-              @Override
-              public void onInitializeAccessibilityNodeInfo(
-                  View view, AccessibilityNodeInfo accessibilityNodeInfo) {
-                super.onInitializeAccessibilityNodeInfo(view, accessibilityNodeInfo);
-                View editText = textInputView.getEditText();
-                if (editText != null) {
-                  accessibilityNodeInfo.setLabeledBy(editText);
-                }
+      helperTextView.setAccessibilityDelegate(
+          new AccessibilityDelegate() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(
+                View view, AccessibilityNodeInfo accessibilityNodeInfo) {
+              super.onInitializeAccessibilityNodeInfo(view, accessibilityNodeInfo);
+              View editText = textInputView.getEditText();
+              if (editText != null) {
+                accessibilityNodeInfo.setLabeledBy(editText);
               }
-            });
-      }
+            }
+          });
     } else {
       hideHelperText();
       removeIndicator(helperTextView, HELPER_INDEX);
@@ -616,9 +648,20 @@ final class IndicatorViewController {
     }
   }
 
+  void setErrorAccessibilityLiveRegion(final int accessibilityLiveRegion) {
+    this.errorViewAccessibilityLiveRegion = accessibilityLiveRegion;
+    if (errorView != null) {
+      errorView.setAccessibilityLiveRegion(accessibilityLiveRegion);
+    }
+  }
+
   @Nullable
   CharSequence getErrorContentDescription() {
     return errorViewContentDescription;
+  }
+
+  int getErrorAccessibilityLiveRegion() {
+    return errorViewAccessibilityLiveRegion;
   }
 
   @ColorInt

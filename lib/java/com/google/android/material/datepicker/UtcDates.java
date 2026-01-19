@@ -19,7 +19,11 @@ import com.google.android.material.R;
 
 import android.annotation.TargetApi;
 import android.content.res.Resources;
+import android.icu.text.DisplayContext;
 import android.os.Build.VERSION_CODES;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.TtsSpan;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.text.DateFormat;
@@ -138,6 +142,7 @@ class UtcDates {
     android.icu.text.DateFormat format =
         android.icu.text.DateFormat.getInstanceForSkeleton(pattern, locale);
     format.setTimeZone(getUtcAndroidTimeZone());
+    format.setContext(DisplayContext.CAPITALIZATION_FOR_STANDALONE);
     return format;
   }
 
@@ -147,30 +152,79 @@ class UtcDates {
     return format;
   }
 
-  static SimpleDateFormat getTextInputFormat() {
-    String pattern =
+  static DateFormat getNormalizedFormat(@NonNull DateFormat dateFormat) {
+    DateFormat clone = (DateFormat) dateFormat.clone();
+    clone.setTimeZone(getTimeZone());
+    return clone;
+  }
+
+  static SimpleDateFormat getDefaultTextInputFormat() {
+    String defaultFormatPattern =
         ((SimpleDateFormat) DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault()))
-            .toPattern()
-            .replaceAll("\\s+", "");
-    SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.getDefault());
-    format.setTimeZone(UtcDates.getTimeZone());
+            .toPattern();
+    defaultFormatPattern = getDatePatternAsInputFormat(defaultFormatPattern);
+    SimpleDateFormat format = new SimpleDateFormat(defaultFormatPattern, Locale.getDefault());
+    format.setTimeZone(getTimeZone());
     format.setLenient(false);
     return format;
   }
 
-  static String getTextInputHint(Resources res, SimpleDateFormat format) {
+  static String getDefaultTextInputHint(Resources res, SimpleDateFormat format) {
     String formatHint = format.toPattern();
     String yearChar = res.getString(R.string.mtrl_picker_text_input_year_abbr);
     String monthChar = res.getString(R.string.mtrl_picker_text_input_month_abbr);
     String dayChar = res.getString(R.string.mtrl_picker_text_input_day_abbr);
 
-    // Format year to always be displayed as 4 chars when only 1 char is used in localized pattern.
-    // Example: (fr-FR) dd/MM/y -> dd/MM/yyyy
-    if (formatHint.replaceAll("[^y]", "").length() == 1) {
-      formatHint = formatHint.replace("y", "yyyy");
+    // Remove duplicate characters for Korean.
+    if (Locale.getDefault().getLanguage().equals(Locale.KOREAN.getLanguage())) {
+      formatHint = formatHint.replaceAll("d+", "d").replaceAll("M+", "M").replaceAll("y+", "y");
     }
 
     return formatHint.replace("d", dayChar).replace("M", monthChar).replace("y", yearChar);
+  }
+
+  /**
+   * Returns a SpannableString with the given format hint that has a TtsSpan.TYPE_VERBATIM span
+   * applied to it in order to ensure that the hint is read verbatim by screen readers.
+   */
+  static SpannableString getVerbatimTextInputHint(String formatHint) {
+    SpannableString spannableHint = new SpannableString(formatHint);
+    spannableHint.setSpan(
+        new TtsSpan.Builder(TtsSpan.TYPE_VERBATIM).build(),
+        0,
+        spannableHint.length(),
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    return spannableHint;
+  }
+
+  /**
+   * Receives a given local date format string and returns a string that can be displayed to the
+   * user and parsed by the date parser.
+   *
+   * <p>This function:
+   *  - Removes all characters that don't match `d`, `M` and `y`, or any of the date format
+   *    delimiters `.`, `/` and `-`.
+   *  - Ensures that the format is for two digits day and month, and four digits year.
+   *
+   * <p>The output of this cleanup is always a 10 characters string in one of the following
+   * variations:
+   *  - yyyy/MM/dd
+   *  - yyyy-MM-dd
+   *  - yyyy.MM.dd
+   *  - dd/MM/yyyy
+   *  - dd-MM-yyyy
+   *  - dd.MM.yyyy
+   *  - MM/dd/yyyy
+   */
+  @NonNull
+  static String getDatePatternAsInputFormat(@NonNull String localeFormat) {
+    return localeFormat
+        .replaceAll("[^dMy/\\-.]", "")
+        .replaceAll("d{1,2}", "dd")
+        .replaceAll("M{1,2}", "MM")
+        .replaceAll("y{1,4}", "yyyy")
+        .replaceAll("\\.$", "") // Removes a dot suffix that appears in some formats
+        .replaceAll("My", "M/y"); // Edge case for the Kako locale
   }
 
   static SimpleDateFormat getSimpleFormat(String pattern) {
@@ -184,6 +238,11 @@ class UtcDates {
   }
 
   @TargetApi(VERSION_CODES.N)
+  static android.icu.text.DateFormat getYearMonthFormat(Locale locale) {
+    return getAndroidFormat(android.icu.text.DateFormat.YEAR_MONTH, locale);
+  }
+
+  @TargetApi(VERSION_CODES.N)
   static android.icu.text.DateFormat getYearAbbrMonthDayFormat(Locale locale) {
     return getAndroidFormat(android.icu.text.DateFormat.YEAR_ABBR_MONTH_DAY, locale);
   }
@@ -194,13 +253,13 @@ class UtcDates {
   }
 
   @TargetApi(VERSION_CODES.N)
-  static android.icu.text.DateFormat getAbbrMonthWeekdayDayFormat(Locale locale) {
-    return getAndroidFormat(android.icu.text.DateFormat.ABBR_MONTH_WEEKDAY_DAY, locale);
+  static android.icu.text.DateFormat getMonthWeekdayDayFormat(Locale locale) {
+    return getAndroidFormat(android.icu.text.DateFormat.MONTH_WEEKDAY_DAY, locale);
   }
 
   @TargetApi(VERSION_CODES.N)
-  static android.icu.text.DateFormat getYearAbbrMonthWeekdayDayFormat(Locale locale) {
-    return getAndroidFormat(android.icu.text.DateFormat.YEAR_ABBR_MONTH_WEEKDAY_DAY, locale);
+  static android.icu.text.DateFormat getYearMonthWeekdayDayFormat(Locale locale) {
+    return getAndroidFormat(android.icu.text.DateFormat.YEAR_MONTH_WEEKDAY_DAY, locale);
   }
 
   static DateFormat getMediumFormat() {

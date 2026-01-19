@@ -16,7 +16,7 @@ The Material 3 color theming system uses an organized approach to apply colors
 to your UI. Material components use theme colors and their variations to style
 backgrounds, text, and more.
 
-## Design & API Documentation
+## Design and API Documentation
 
 -   [Material Design guidelines: Color](https://m3.material.io/styles/color/overview/)
 
@@ -31,21 +31,33 @@ brand color:
 
 <!-- Auto-generated accent color table starts. Do not edit below or remove this comment. -->
 
-Color Role             | Android Attribute         | Light Theme Baseline (Dynamic) Color | Dark Theme Baseline (Dynamic) Color
----------------------- | ------------------------- | ------------------------------------ | -----------------------------------
-Primary                | colorPrimary              | #ff6750a4</br>(system_accent1_600)   | #ffd0bcff</br>(system_accent1_200)
-On Primary             | colorOnPrimary            | white</br>(system_accent1_0)         | #ff381e72</br>(system_accent1_800)
-Primary Container      | colorPrimaryContainer     | #ffeaddff</br>(system_accent1_100)   | #ff4f378b</br>(system_accent1_700)
-On Primary Container   | colorOnPrimaryContainer   | #ff21005d</br>(system_accent1_900)   | #ffeaddff</br>(system_accent1_100)
-Inverse Primary        | colorPrimaryInverse       | #ffd0bcff</br>(system_accent1_200)   | #ff6750a4</br>(system_accent1_600)
-Secondary              | colorSecondary            | #ff625b71</br>(system_accent2_600)   | #ffccc2dc</br>(system_accent2_200)
-On Secondary           | colorOnSecondary          | white</br>(system_accent2_0)         | #ff332d41</br>(system_accent2_800)
-Secondary Container    | colorSecondaryContainer   | #ffe8def8</br>(system_accent2_100)   | #ff4a4458</br>(system_accent2_700)
-On Secondary Container | colorOnSecondaryContainer | #ff1d192b</br>(system_accent2_900)   | #ffe8def8</br>(system_accent2_100)
-Tertiary               | colorTertiary             | #ff7d5260</br>(system_accent3_600)   | #ffefb8c8</br>(system_accent3_200)
-On Tertiary            | colorOnTertiary           | white</br>(system_accent3_0)         | #ff492532</br>(system_accent3_800)
-Tertiary Container     | colorTertiaryContainer    | #ffffd8e4</br>(system_accent3_100)   | #ff633b48</br>(system_accent3_700)
-On Tertiary Container  | colorOnTertiaryContainer  | #ff31111d</br>(system_accent3_900)   | #ffffd8e4</br>(system_accent3_100)
+Color role                 | Android attribute            | Light baseline | Light dynamic 31-33 | Light dynamic 34+                   | Dark baseline | Dark dynamic 31-33 | Dark dynamic 34+
+-------------------------- | ---------------------------- | -------------- | ------------------- | ----------------------------------- | ------------- | ------------------ | ----------------
+Primary                    | colorPrimary                 | primary40      | system_accent1_600  | system_primary_light                | primary80     | system_accent1_200 | system_primary_dark
+On Primary                 | colorOnPrimary               | white          | system_accent1_0    | system_on_primary_light             | primary20     | system_accent1_800 | system_on_primary_dark
+Primary Container          | colorPrimaryContainer        | primary90      | system_accent1_100  | system_primary_container_light      | primary30     | system_accent1_700 | system_primary_container_dark
+On Primary Container       | colorOnPrimaryContainer      | primary10      | system_accent1_900  | system_on_primary_container_light   | primary90     | system_accent1_100 | system_on_primary_container_dark
+Inverse Primary            | colorPrimaryInverse          | primary80      | system_accent1_200  | system_primary_dark                 | primary40     | system_accent1_600 | system_primary_light
+Primary Fixed              | colorPrimaryFixed            | primary90      | system_accent1_100  | system_primary_fixed                | primary90     | system_accent1_100 | system_primary_fixed
+Primary Fixed Dim          | colorPrimaryFixedDim         | primary80      | system_accent1_200  | system_primary_fixed_dim            | primary80     | system_accent1_200 | system_primary_fixed_dim
+On Primary Fixed           | colorOnPrimaryFixed          | primary10      | system_accent1_900  | system_on_primary_fixed             | primary10     | system_accent1_900 | system_on_primary_fixed
+On Primary Fixed Variant   | colorOnPrimaryFixedVariant   | primary30      | system_accent1_700  | system_on_primary_fixed_variant     | primary30     | system_accent1_700 | system_on_primary_fixed_variant
+Secondary                  | colorSecondary               | secondary40    | system_accent2_600  | system_secondary_light              | secondary80   | system_accent2_200 | system_secondary_dark
+On Secondary               | colorOnSecondary             | white          | system_accent2_0    | system_on_secondary_light           | secondary20   | system_accent2_800 | system_on_secondary_dark
+Secondary Container        | colorSecondaryContainer      | secondary90    | system_accent2_100  | system_secondary_container_light    | secondary30   | system_accent2_700 | system_secondary_container_dark
+On Secondary Container     | colorOnSecondaryContainer    | secondary10    | system_accent2_900  | system_on_secondary_container_light | secondary90   | system_accent2_100 | system_on_secondary_container_dark
+Secondary Fixed            | colorSecondaryFixed          | secondary90    | system_accent2_100  | system_secondary_fixed              | secondary90   | system_accent2_100 | system_secondary_fixed
+Secondary Fixed Dim        | colorSecondaryFixedDim       | secondary80    | system_accent2_200  | system_secondary_fixed_dim          | secondary80   | system_accent2_200 | system_secondary_fixed_dim
+On Secondary Fixed         | colorOnSecondaryFixed        | secondary10    | system_accent2_900  | system_on_secondary_fixed           | secondary10   | system_accent2_900 | system_on_secondary_fixed
+On Secondary Fixed Variant | colorOnSecondaryFixedVariant | secondary30    | system_accent2_700  | system_on_secondary_fixed_variant   | secondary30   | system_accent2_700 | system_on_secondary_fixed_variant
+Tertiary                   | colorTertiary                | tertiary40     | system_accent3_600  | system_tertiary_light               | tertiary80    | system_accent3_200 | system_tertiary_dark
+On Tertiary                | colorOnTertiary              | white          | system_accent3_0    | system_on_tertiary_light            | tertiary20    | system_accent3_800 | system_on_tertiary_dark
+Tertiary Container         | colorTertiaryContainer       | tertiary90     | system_accent3_100  | system_tertiary_container_light     | tertiary30    | system_accent3_700 | system_tertiary_container_dark
+On Tertiary Container      | colorOnTertiaryContainer     | tertiary10     | system_accent3_900  | system_on_tertiary_container_light  | tertiary90    | system_accent3_100 | system_on_tertiary_container_dark
+Tertiary Fixed             | colorTertiaryFixed           | tertiary90     | system_accent3_100  | system_tertiary_fixed               | tertiary90    | system_accent3_100 | system_tertiary_fixed
+Tertiary Fixed Dim         | colorTertiaryFixedDim        | tertiary80     | system_accent3_200  | system_tertiary_fixed_dim           | tertiary80    | system_accent3_200 | system_tertiary_fixed_dim
+On Tertiary Fixed          | colorOnTertiaryFixed         | tertiary10     | system_accent3_900  | system_on_tertiary_fixed            | tertiary10    | system_accent3_900 | system_on_tertiary_fixed
+On Tertiary Fixed Variant  | colorOnTertiaryFixedVariant  | tertiary30     | system_accent3_700  | system_on_tertiary_fixed_variant    | tertiary30    | system_accent3_700 | system_on_tertiary_fixed_variant
 
 <!-- Auto-generated accent color table ends. Do not edit below or remove this comment. -->
 
@@ -58,29 +70,86 @@ combinations. These additional color attributes are as follows:
 
 <!-- Auto-generated additional color table starts. Do not edit below or remove this comment. -->
 
-Color Role         | Android Attribute       | Light Theme Baseline (Dynamic) Color | Dark Theme Baseline (Dynamic) Color
------------------- | ----------------------- | ------------------------------------ | -----------------------------------
-Error              | colorError              | #ffb3261e</br>(Same)                 | #fff2b8b5</br>(Same)
-On Error           | colorOnError            | white</br>(Same)                     | #ff601410</br>(Same)
-Error Container    | colorErrorContainer     | #fff9dedc</br>(Same)                 | #ff8c1d18</br>(Same)
-On Error Container | colorOnErrorContainer   | #ff410e0b</br>(Same)                 | #fff2b8b5</br>(Same)
-Outline            | colorOutline            | #ff79747e</br>(system_neutral2_500)  | #ff938f99</br>(system_neutral2_400)
-Background         | android:colorBackground | #fffffbfe</br>(system_neutral1_10)   | #ff1c1b1f</br>(system_neutral1_900)
-On Background      | colorOnBackground       | #ff1c1b1f</br>(system_neutral1_900)  | #ffe6e1e5</br>(system_neutral1_100)
-Surface            | colorSurface            | #fffffbfe</br>(system_neutral1_10)   | #ff1c1b1f</br>(system_neutral1_900)
-On Surface         | colorOnSurface          | #ff1c1b1f</br>(system_neutral1_900)  | #ffe6e1e5</br>(system_neutral1_100)
-Surface Variant    | colorSurfaceVariant     | #ffe7e0ec</br>(system_neutral2_100)  | #ff49454f</br>(system_neutral2_700)
-On Surface Variant | colorOnSurfaceVariant   | #ff49454f</br>(system_neutral2_700)  | #ffcac4d0</br>(system_neutral2_200)
-Inverse Surface    | colorSurfaceInverse     | #ff313033</br>(system_neutral1_800)  | #ffe6e1e5</br>(system_neutral1_100)
-Inverse On Surface | colorOnSurfaceInverse   | #fff4eff4</br>(system_neutral1_50)   | #ff313033</br>(system_neutral1_800)
+Color role                | Android attribute            | Light baseline    | Light dynamic 31-33                      | Light dynamic 34+                      | Dark baseline     | Dark dynamic 31-33                       | Dark dynamic 34+
+------------------------- | ---------------------------- | ----------------- | ---------------------------------------- | -------------------------------------- | ----------------- | ---------------------------------------- | ----------------
+Error                     | colorError                   | error40           | error40                                  | system_error_light                     | error80           | error80                                  | system_error_dark
+On Error                  | colorOnError                 | white             | white                                    | system_on_error_light                  | error20           | error20                                  | system_on_error_dark
+Error Container           | colorErrorContainer          | error90           | error90                                  | system_error_container_light           | error30           | error30                                  | system_error_container_dark
+On Error Container        | colorOnErrorContainer        | error10           | error10                                  | system_on_error_container_light        | error90           | error90                                  | system_on_error_container_dark
+Outline                   | colorOutline                 | neutral_variant50 | system_neutral2_500                      | system_outline_light                   | neutral_variant60 | system_neutral2_400                      | system_outline_dark
+Outline Variant           | colorOutlineVariant          | neutral_variant80 | system_neutral2_200                      | system_outline_variant_light           | neutral_variant30 | system_neutral2_700                      | system_outline_variant_dark
+Background                | android:colorBackground      | neutral98         | m3_ref_palette_dynamic_neutral_variant98 | system_background_light                | neutral6          | m3_ref_palette_dynamic_neutral_variant6  | system_background_dark
+On Background             | colorOnBackground            | neutral10         | system_neutral1_900                      | system_on_background_light             | neutral90         | system_neutral1_100                      | system_on_background_dark
+Surface                   | colorSurface                 | neutral98         | m3_ref_palette_dynamic_neutral_variant98 | system_surface_light                   | neutral6          | m3_ref_palette_dynamic_neutral_variant6  | system_surface_dark
+On Surface                | colorOnSurface               | neutral10         | system_neutral1_900                      | system_on_surface_light                | neutral90         | system_neutral1_100                      | system_on_surface_dark
+Surface Variant           | colorSurfaceVariant          | neutral_variant90 | system_neutral2_100                      | system_surface_variant_light           | neutral_variant30 | system_neutral2_700                      | system_surface_variant_dark
+On Surface Variant        | colorOnSurfaceVariant        | neutral_variant30 | system_neutral2_700                      | system_on_surface_variant_light        | neutral_variant80 | system_neutral2_200                      | system_on_surface_variant_dark
+Inverse Surface           | colorSurfaceInverse          | neutral20         | system_neutral1_800                      | system_surface_dark                    | neutral90         | system_neutral1_100                      | system_surface_light
+Inverse On Surface        | colorOnSurfaceInverse        | neutral95         | system_neutral1_50                       | system_on_surface_dark                 | neutral20         | system_neutral1_800                      | system_on_surface_light
+Surface Bright            | colorSurfaceBright           | neutral98         | m3_ref_palette_dynamic_neutral_variant98 | system_surface_bright_light            | neutral24         | m3_ref_palette_dynamic_neutral_variant24 | system_surface_bright_dark
+Surface Dim               | colorSurfaceDim              | neutral87         | m3_ref_palette_dynamic_neutral_variant87 | system_surface_dim_light               | neutral6          | m3_ref_palette_dynamic_neutral_variant6  | system_surface_dim_dark
+Surface Container         | colorSurfaceContainer        | neutral94         | m3_ref_palette_dynamic_neutral_variant94 | system_surface_container_light         | neutral12         | m3_ref_palette_dynamic_neutral_variant12 | system_surface_container_dark
+Surface Container Low     | colorSurfaceContainerLow     | neutral96         | m3_ref_palette_dynamic_neutral_variant96 | system_surface_container_low_light     | neutral10         | system_neutral2_900                      | system_surface_container_low_dark
+Surface Container Lowest  | colorSurfaceContainerLowest  | white             | system_neutral2_0                        | system_surface_container_lowest_light  | neutral4          | m3_ref_palette_dynamic_neutral_variant4  | system_surface_container_lowest_dark
+Surface Container High    | colorSurfaceContainerHigh    | neutral92         | m3_ref_palette_dynamic_neutral_variant92 | system_surface_container_high_light    | neutral17         | m3_ref_palette_dynamic_neutral_variant17 | system_surface_container_high_dark
+Surface Container Highest | colorSurfaceContainerHighest | neutral90         | system_neutral2_100                      | system_surface_container_highest_light | neutral22         | m3_ref_palette_dynamic_neutral_variant22 | system_surface_container_highest_dark
 
 <!-- Auto-generated additional color table ends. Do not edit below or remove this comment. -->
 
 ## Using Surface Colors
 
-Material 3 uses primary colored elevation overlays to present a visual hierarchy
-with different elevations in both light and dark themes. Material 3 themes
-enable this by default with setting `?attr/elevationOverlayColor` to
+As of version 1.11.0-alpha02 and above, Material3 components will use the
+following tonal surface color roles by default (instead of elevation overlays
+which involved blending the Surface and Primary colors):
+
+-   `colorSurfaceContainer`
+-   `colorSurfaceContainerLow`
+-   `colorSurfaceContainerHigh`
+-   `colorSurfaceContainerLowest`
+-   `colorSurfaceContainerHighest`
+-   `colorSurfaceDim`
+-   `colorSurfaceBright`
+
+**Note:** When resolving these tonal surface colors above, please use
+`MaterialColors.getColor()` to avoid resolving unexpected colors.
+
+These color roles are used as the default container/background color in the
+components below. Please check the
+[Surface colors guidelines](https://m3.material.io/styles/color/the-color-system/color-roles#0abbf8b7-61e1-49ee-9f97-4967beb1e4fe)
+for more details.
+
+*   [Bottom App Bar](../components/BottomAppBar.md)
+*   [Bottom Navigation](../components/BottomNavigation.md)
+*   [Bottom Sheet](../components/BottomSheet.md)
+*   [Button](../components/Button.md)
+*   [Card](../components/Card.md)
+*   [Chip](../components/Chip.md)
+*   [Date Picker](../components/DatePicker.md)
+*   [Dialog](../components/Dialog.md)
+*   [Floating Action Button](../components/FloatingActionButton.md)
+*   [Menu](../components/Menu.md)
+*   [Navigation Drawer](../components/NavigationDrawer.md)
+*   [Search](../components/Search.md)
+*   [Switch](../components/Switch.md)
+*   [Tabs](../components/Tabs.md)
+*   [Text Field](../components/TextField.md)
+*   [Time Picker](../components/TimePicker.md)
+*   [Top App Bar](../components/TopAppBar.md)
+
+### Using Surface with Elevation Overlay
+
+**Note:** Surface with elevation overlay has been replaced with tonal surface
+colors in Material's components. If you use the Material styles or default
+styles in the Material theme, the container color will no longer respond to the
+elevation overlay color. The elevation overlay utility has not been removed from
+the implementation. If the surface with elevation overlay is needed for
+migration purposes, please set the corresponding container color to
+`?attr/colorSurface`. The maintenance to the elevation overlay has been
+discontinued.
+
+Surface with elevation overlay uses primary colored overlays to present a visual
+hierarchy with different elevations in both light and dark themes. Material 3
+themes enable this by default with setting `?attr/elevationOverlayColor` to
 `?attr/colorPrimary`.
 
 Elevation overlays use the following theme attributes:
@@ -96,11 +165,10 @@ defaults shown above.
 
 The elevation overlays will be applied to surface colors to create tonal
 variations. Within the Material 3 color palette, there are five predefined
-surface tonal variations (Surface1-5) which are used as the default surface
-colors (by applying different elevations) of different Material 3 components.
-However, these surface tonal colors are **NOT** implemented as color resources,
-but their actual color values are calculated *on the fly* with the
-`?attr/elevationOverlayColor`, as mentioned above.
+surface tonal variations (Surface1-5) which are available to be applied to
+different Material 3 components. However, these surface tonal colors are **NOT**
+implemented as color resources, but their actual color values are calculated *on
+the fly* with the `?attr/elevationOverlayColor`, as mentioned above.
 
 In a practical scenario, you have three ways to include those tonal surface
 colors in your app:
@@ -108,13 +176,12 @@ colors in your app:
 ##### Material Design Components
 
 The easiest way to use surface colors with tonal variations is with Material
-Design Components, which have built-in support for tonal surface
-colors/elevation overlays. You can customize surface colors of those components
-by changing their elevation.
+Design Components, which have built-in support for surface with elevation
+overlays. You can customize surface colors of those components by changing their
+elevation.
 
-Here is a list of Material components that support elevation overlays. These
-components have `colorSurface` set as the default background color and can be
-elevated:
+Here is a list of Material components that support elevation overlays when
+`?attr/colorSurface` is set as the container/background color.
 
 *   [Top App Bar](../components/TopAppBar.md)
 *   [Bottom App Bar](../components/BottomAppBar.md)
@@ -139,7 +206,7 @@ want to consider getting those tonal surface colors on the fly, by using the
 convenient enums we provide in the Material Library. For example, if you want to
 get the color hex value of Surface1, you can do:
 
-```
+```java
 int colorSurface1 = SurfaceColors.SURFACE_1.getColor(context);
 ```
 
@@ -179,7 +246,7 @@ this helper class according to different scenarios:
 
 In your application class’ `onCreate()` method, call:
 
-```
+```java
 DynamicColors.applyToActivitiesIfAvailable(this);
 ```
 
@@ -194,7 +261,7 @@ If you are using Material 3 themes, `R.attr.dynamicColorThemeOverlay` will be
 You can also have finer control over theme overlay deployment by providing a
 precondition when calling the method:
 
-```
+```java
 DynamicColors.applyToActivitiesIfAvailable(this, (activity, themeResId) -> {
   // ...implement your own logic here. Return `true` if dynamic colors should be applied.
 });
@@ -203,7 +270,7 @@ DynamicColors.applyToActivitiesIfAvailable(this, (activity, themeResId) -> {
 Or provide your own customized dynamic color theme overlays, likely inheriting
 from the Material3 theme overlays above, by doing:
 
-```
+```java
 DynamicColors.applyToActivitiesIfAvailable(this, R.style.ThemeOverlay_MyApp_DynamicColors_DayNight);
 ```
 
@@ -220,7 +287,7 @@ You can also opt to apply dynamic colors to a few specific activities, by
 calling the following method in your activities’ `onCreate()` method (or before
 you inflate anything from it):
 
-```
+```java
 DynamicColors.applyToActivityIfAvailable(this);
 ```
 
@@ -238,14 +305,14 @@ precondition, to have finer control over theme overlay deployment. You may also
 optionally specify an `OnAppliedCallback` function, which will be called after
 dynamic colors have been applied:
 
-```
-DynamicColorsOptions dynamicColorOptions =
+```java
+DynamicColorsOptions dynamicColorsOptions =
     new DynamicColorsOptions.Builder()
         .setThemeOverlay(themeOverlay)
         .setPrecondition(precondition)
         .setOnAppliedCallback(onAppliedCallback)
         .build()
-DynamicColors.applyToActivitiesIfAvailable(application, dynamicColorOptions);
+DynamicColors.applyToActivitiesIfAvailable(application, dynamicColorsOptions);
 ```
 
 ##### Apply dynamic colors to a specific activity using `DynamicColorsOptions`
@@ -253,14 +320,14 @@ DynamicColors.applyToActivitiesIfAvailable(application, dynamicColorOptions);
 You can also apply dynamic colors to a specific activity in the app by passing
 in the specific activity and a `DynamicColorsOptions` object:
 
-```
-DynamicColorsOptions dynamicColorOptions =
+```java
+DynamicColorsOptions dynamicColorsOptions =
     new DynamicColorsOptions.Builder()
         .setThemeOverlay(themeOverlay)
         .setPrecondition(precondition)
         .setOnAppliedCallback(onAppliedCallback)
         .build()
-DynamicColors.applyToActivityIfAvailable(activity, dynamicColorOptions);
+DynamicColors.applyToActivityIfAvailable(activity, dynamicColorsOptions);
 ```
 
 ##### Apply dynamic colors to a specific fragment/view
@@ -269,7 +336,7 @@ Applying dynamic colors to a few of the views in an activity is more complex.
 The easiest solution is to create a themed context to create the view. We
 provide a helper method for this purpose:
 
-```
+```java
 context = DynamicColors.wrapContextIfAvailable(context);
 ```
 
@@ -395,7 +462,7 @@ package:
 
 In your application class or activity/fragment/view, call:
 
-```
+```java
 int harmonizedColor = MaterialColors.harmonizeWithPrimary(context, colorToHarmonize);
 ```
 
@@ -416,7 +483,7 @@ construct a `HarmonizedColorsOptions`. You can optionally pass in an array of
 resource ids for the color resources you'd like to harmonize, a
 `HarmonizedColorAttributes` object and/or the color attribute to harmonize with:
 
-```
+```java
 HarmonizedColorsOptions options =
     new HarmonizedColorsOptions.Builder()
         .setColorResourceIds(colorResources)
@@ -428,7 +495,7 @@ HarmonizedColorsOptions options =
 In the `HarmonizedColorsOptions` class, we also provided a convenience method
 `createMaterialDefaults()`, with Error colors being harmonized by default.
 
-```
+```java
 HarmonizedColorsOptions options = HarmonizedColorsOptions.createMaterialDefaults();
 HarmonizedColors.applyToContextIfAvailable(context, options);
 ```
@@ -436,13 +503,13 @@ HarmonizedColors.applyToContextIfAvailable(context, options);
 If you need to harmonize color resources at runtime to a context and use the
 harmonized color resources in xml, call:
 
-```
+```java
 HarmonizedColors.applyToContextIfAvailable(context, harmonizedColorsOptions);
 ```
 
 To return a new `Context` with color resources being harmonized, call:
 
-```
+```java
 HarmonizedColors.wrapContextIfAvailable(context, harmonizedColorsOptions);
 ```
 
@@ -477,7 +544,7 @@ Here is an example of how we harmonize Error colors with theme overlay, to avoid
 accidentally overriding the resources from the main theme/context. We have an
 array of color attributes defined as:
 
-```
+```java
 private static final int[] HARMONIZED_MATERIAL_ATTRIBUTES =
       new int[] {
         R.attr.colorError,
@@ -489,7 +556,7 @@ private static final int[] HARMONIZED_MATERIAL_ATTRIBUTES =
 
 And a theme overlay defined as:
 
-```
+```xml
 <style name="ThemeOverlay.Material3.HarmonizedColors" parent="">
     <item name="colorError">@color/material_harmonized_color_error</item>
     <item name="colorOnError">@color/material_harmonized_color_on_error</item>
@@ -514,7 +581,7 @@ If you would like to harmonize additional color attributes along with
 harmonizing Error roles by default, the `HarmonizedColorAttributes` would look
 like:
 
-```
+```java
 HarmonizedColorAttributes.create(
     ArrayUtils.addAll(createMaterialDefaults().getAttributes(), myAppAttributes),
     R.style.ThemeOverlay_MyApp_HarmonizedColors);
@@ -531,8 +598,8 @@ dynamic colors have been applied, to ensure visual cohesion for reserved colors
 suggested default when applying dynamic colors, is to harmonize M3 Error colors
 in the callback when constructing `DynamicColorsOptions`:
 
-```
-DynamicColorsOptions dynamicColorOptions =
+```java
+DynamicColorsOptions dynamicColorsOptions =
     new DynamicColorsOptions.Builder(activity)
         ...
         .setOnAppliedCallback(
@@ -541,7 +608,7 @@ DynamicColorsOptions dynamicColorOptions =
                     activity,
                     HarmonizedColorsOptions.createMaterialDefaults()))
         .build()
-DynamicColors.applyToActivityIfAvailable(activity, dynamicColorOptions);
+DynamicColors.applyToActivityIfAvailable(activity, dynamicColorsOptions);
 ```
 
 For color ressources harmonization in a fragment/view, you would use the context
@@ -550,7 +617,7 @@ generated from applying dynamic colors when constructing
 `wrapContextIfAvailable(harmonizedColorsOptions)` to apply resources
 harmonization:
 
-```
+```java
 Context newContext = DynamicColors.wrapContextIfAvailable(getContext());
 
 HarmonizedColorsOptions options =
@@ -586,12 +653,137 @@ Name                    | Method                 | Description
 The library provides the following two helper methods in the `MaterialColors`
 class which return the above-mentioned `ColorRoles` object:
 
-```
+```java
 ColorRoles colorRoles = MaterialColors.getColorRoles(context, color);
 ```
 
 or
 
-```
+```java
 ColorRoles colorRoles = MaterialColors.getColorRoles(color, /* isLightTheme= */ booleanValue);
 ```
+
+## Content-based Dynamic Colors
+
+Content-based color describes the color system’s capability to generate and
+apply a color scheme based on in-app content. In-app content colors can be
+derived from a range of sources, such as album artwork, a brand logo, or a video
+tile.
+
+##### *Use Content-based Dynamic Colors*
+
+A single source color is extracted from a bitmap and then used to derive five
+key colors. Specific tones are mapped into specific color roles that are then
+mapped to Material components.
+
+During this process, chroma fidelity enables Material colors to flex to
+consistently achieve desired chroma, whether high or low. It maintains color
+schemes’ integrity, so existing products will not break. A content scheme then
+produces the range of tones needed for both light and dark theme applications.
+
+We have provided the following two APIs in the `DynamicColorsOptions` class.
+
+API Method                     | Description
+------------------------------ | -----------
+#setContentBasedSource(Bitmap) | Provides a Bitmap from which a single source color is extracted as input
+#setContentBasedSource(int)    | Provides a single source color as input
+
+An example usage for applying content-based dynamic colors to a specific
+activity can be seen below. Since we are overriding color resources in xml at
+runtime, make sure the method is invoked before you inflate the view to take
+effect.
+
+```java
+import com.google.android.material.color.DynamicColorsOptions;
+import com.google.android.material.color.DynamicColors;
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+
+    // Invoke before the view is inflated in your activity.
+    DynamicColors.applyToActivityIfAvailable(
+        this,
+        new DynamicColorsOptions.Builder()
+            .setContentBasedSource(bitmap)
+            .build()
+    );
+
+    setContentView(R.layout.xyz);
+  }
+```
+
+An example usage for applying content-based dynamic colors to a specific
+fragment/view:
+
+```java
+import com.google.android.material.color.DynamicColorsOptions;
+import com.google.android.material.color.DynamicColors;
+
+  @Override
+  public View onCreateView(LayoutInflater layoutInflater, ViewGroup viewGroup, Bundle bundle) {
+
+    Context context = DynamicColors.wrapContextIfAvailable(
+            requireContext(),
+            new DynamicColorsOptions.Builder()
+                .setContentBasedSource(sourceColor)
+                .build());
+
+    return layoutInflater.cloneInContext(context).inflate(R.layout.xyz, viewGroup, false);
+  }
+```
+
+This method will return a context with a content-based dynamic colors theme
+overlay applied, if Dynamic Colors are available on the device.
+
+**Important:** Please note that this feature is only available for S+.
+
+## Contrast Control
+
+Tone quantifies the lightness or darkness of colors. It's one foundational
+dimension of the Material color system and schemes. The difference in tone
+between two colors creates visual contrast. A greater difference creates higher
+contrast. Color contrast control allows users to adjust their UI contrast levels
+in the system so they can comfortably see and use digital experiences.
+
+##### *Use Contrast Control - Dynamic*
+
+You will get contrast control for free if you already use dynamic colors.
+Material color roles enforce contrast through tone while maintaining hierarchy
+and visual relationships. The color value of a Material color role (e.g.
+primaryContainer) can systematically adjust in tone to achieve sufficient
+contrast.
+
+**Important:** Please note that this feature is only available for U+.
+
+##### *Use Contrast Control - non-Dynamic*
+
+If you are not using dynamic colors and would like to use contrast control for
+your branded or custom themes, we have created the following API in the
+`ColorContrast` class that you can call manually.
+
+*Apply contrast to all activities in the app*
+
+In your application class’ `onCreate()` method, call:
+
+```java
+ColorContrast.applyToActivitiesIfAvailable(
+        this,
+        new ColorContrastOptions.Builder()
+            .setMediumContrastThemeOverlay(mediumContrastThemeOverlayResId)
+            .setHighContrastThemeOverlay(highContrastThemeOverlayResId)
+            .build();
+);
+```
+
+Note that if you want contrast support for both light and dark theme, then for
+`mediumContrastThemeOverlayResId` and `highContrastThemeOverlayResId`, you
+should pass in a DayNight theme, which will help facilitate easy switching
+between your app’s Light and Dark theme.
+
+##### *Use Contrast Control - Custom Colors*
+
+If you have custom colors in your app that would like to obey contrast changes
+from the system, whether or not you are using dynamic colors, they should be
+included in the abovementioned theme overlays for medium and high contrast
+support. To make your custom colors obey contrast for all activities in the app,
+please refer to the API from the section above.

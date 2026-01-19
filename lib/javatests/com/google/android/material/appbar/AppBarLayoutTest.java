@@ -24,7 +24,6 @@ import static com.google.common.truth.Truth.assertThat;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import android.view.View;
-import androidx.core.view.ViewCompat;
 import com.google.android.material.appbar.AppBarLayout.LayoutParams;
 import org.junit.Before;
 import org.junit.Test;
@@ -177,16 +176,34 @@ public class AppBarLayoutTest {
     assertThat(appBarLayout.getDownNestedScrollRange()).isEqualTo(0);
   }
 
+  @Test
+  public void testSetScrollEffectNone_returnsNull() {
+    AppBarLayout.LayoutParams lp =
+        (AppBarLayout.LayoutParams) firstScrollableChild.getLayoutParams();
+    lp.setScrollEffect(LayoutParams.SCROLL_EFFECT_NONE);
+
+    assertThat(lp.getScrollEffect()).isEqualTo(null);
+  }
+
+  @Test
+  public void testSetScrollEffectCompress() {
+    AppBarLayout.LayoutParams lp =
+        (AppBarLayout.LayoutParams) firstScrollableChild.getLayoutParams();
+    lp.setScrollEffect(LayoutParams.SCROLL_EFFECT_COMPRESS);
+
+    assertThat(lp.getScrollEffect()).isInstanceOf(AppBarLayout.CompressChildScrollEffect.class);
+  }
+
   private static int getChildScrollRange(View child) {
     final LayoutParams lp = (LayoutParams) child.getLayoutParams();
     return getChildFullHeight(child, lp)
-        - (isExitUntilCollapsed(lp) ? ViewCompat.getMinimumHeight(child) : 0);
+        - (isExitUntilCollapsed(lp) ? child.getMinimumHeight() : 0);
   }
 
   private static int getChildDownNestedPreScrollRange(View child) {
     final LayoutParams lp = (LayoutParams) child.getLayoutParams();
     if (isEnterAlwaysCollapsed(lp)) {
-      return ViewCompat.getMinimumHeight(child) + lp.topMargin + lp.bottomMargin;
+      return child.getMinimumHeight() + lp.topMargin + lp.bottomMargin;
     }
     return getChildScrollRange(child);
   }

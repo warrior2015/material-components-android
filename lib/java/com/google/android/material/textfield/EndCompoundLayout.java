@@ -19,10 +19,14 @@ package com.google.android.material.textfield;
 import com.google.android.material.R;
 
 import static com.google.android.material.textfield.IconHelper.applyIconTint;
+import static com.google.android.material.textfield.IconHelper.convertScaleType;
 import static com.google.android.material.textfield.IconHelper.refreshIconDrawableState;
 import static com.google.android.material.textfield.IconHelper.setCompatRippleBackgroundIfNeeded;
+import static com.google.android.material.textfield.IconHelper.setIconMinSize;
 import static com.google.android.material.textfield.IconHelper.setIconOnClickListener;
 import static com.google.android.material.textfield.IconHelper.setIconOnLongClickListener;
+import static com.google.android.material.textfield.IconHelper.setIconScaleType;
+import static com.google.android.material.textfield.IconHelper.updateIconTooltip;
 import static com.google.android.material.textfield.TextInputLayout.END_ICON_CLEAR_TEXT;
 import static com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM;
 import static com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU;
@@ -44,24 +48,22 @@ import android.util.SparseArray;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.View.OnAttachStateChangeListener;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityManager.TouchExplorationStateChangeListener;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView.ScaleType;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 import androidx.annotation.StyleRes;
 import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.MarginLayoutParamsCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.accessibility.AccessibilityManagerCompat;
-import androidx.core.view.accessibility.AccessibilityManagerCompat.TouchExplorationStateChangeListener;
 import androidx.core.widget.TextViewCompat;
 import com.google.android.material.internal.CheckableImageButton;
 import com.google.android.material.internal.TextWatcherAdapter;
@@ -94,6 +96,8 @@ class EndCompoundLayout extends LinearLayout {
       new LinkedHashSet<>();
   private ColorStateList endIconTintList;
   private PorterDuff.Mode endIconTintMode;
+  private int endIconMinSize;
+  @NonNull private ScaleType endIconScaleType;
   private OnLongClickListener endIconOnLongClickListener;
 
   @Nullable private CharSequence suffixText;
@@ -179,6 +183,17 @@ class EndCompoundLayout extends LinearLayout {
     addView(endIconFrame);
     addView(errorIconView);
 
+    errorIconView.setOnFocusableChangedListener(
+        (v, focusable) ->
+            updateIconTooltip(
+                errorIconView,
+                errorIconOnLongClickListener,
+                errorIconView.getContentDescription()));
+    endIconView.setOnFocusableChangedListener(
+        (v, focusable) ->
+            updateIconTooltip(
+                endIconView, endIconOnLongClickListener, getEndIconContentDescription()));
+
     textInputLayout.addOnEditTextAttachedListener(onEditTextAttachedListener);
     addOnAttachStateChangeListener(
         new OnAttachStateChangeListener() {
@@ -204,7 +219,7 @@ class EndCompoundLayout extends LinearLayout {
     if (MaterialResources.isFontScaleAtLeast1_3(getContext())) {
       ViewGroup.MarginLayoutParams lp =
           (ViewGroup.MarginLayoutParams) iconView.getLayoutParams();
-      MarginLayoutParamsCompat.setMarginStart(lp, 0);
+      lp.setMarginStart(0);
     }
     return iconView;
   }
@@ -225,10 +240,10 @@ class EndCompoundLayout extends LinearLayout {
     }
     errorIconView.setContentDescription(
         getResources().getText(R.string.error_icon_content_description));
-    ViewCompat.setImportantForAccessibility(
-        errorIconView, ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    errorIconView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
     errorIconView.setClickable(false);
     errorIconView.setPressable(false);
+    errorIconView.setCheckable(false);
     errorIconView.setFocusable(false);
   }
 
@@ -274,6 +289,14 @@ class EndCompoundLayout extends LinearLayout {
       setEndIconContentDescription(
           a.getText(R.styleable.TextInputLayout_passwordToggleContentDescription));
     }
+    setEndIconMinSize(
+        a.getDimensionPixelSize(
+            R.styleable.TextInputLayout_endIconMinSize,
+            getResources().getDimensionPixelSize(R.dimen.mtrl_min_touch_target_size)));
+    if (a.hasValue(R.styleable.TextInputLayout_endIconScaleType)) {
+      setEndIconScaleType(
+          convertScaleType(a.getInt(R.styleable.TextInputLayout_endIconScaleType, -1)));
+    }
   }
 
   private void initSuffixTextView(TintTypedArray a) {
@@ -285,8 +308,7 @@ class EndCompoundLayout extends LinearLayout {
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.BOTTOM));
-    ViewCompat.setAccessibilityLiveRegion(
-        suffixTextView, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE);
+    suffixTextView.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
 
     setSuffixTextAppearance(
         a.getResourceId(R.styleable.TextInputLayout_suffixTextAppearance, 0));
@@ -353,7 +375,6 @@ class EndCompoundLayout extends LinearLayout {
     setEndIconVisible(endIconMode != END_ICON_NONE);
     EndIconDelegate delegate = getEndIconDelegate();
     setEndIconDrawable(getIconResId(delegate));
-    setEndIconContentDescription(delegate.getIconContentDescriptionResId());
     setEndIconCheckable(delegate.isIconCheckable());
     if (delegate.isBoxBackgroundModeSupported(textInputLayout.getBoxBackgroundMode())) {
       setUpDelegate(delegate);
@@ -365,6 +386,7 @@ class EndCompoundLayout extends LinearLayout {
               + endIconMode);
     }
     setEndIconOnClickListener(delegate.getOnIconClickListener());
+    setEndIconContentDescription(delegate.getIconContentDescriptionResId());
     if (editText != null) {
       delegate.onEditTextAttached(editText);
       setOnFocusChangeListenersIfNeeded(delegate);
@@ -411,16 +433,16 @@ class EndCompoundLayout extends LinearLayout {
   private void addTouchExplorationStateChangeListenerIfNeeded() {
     if (touchExplorationStateChangeListener != null
         && accessibilityManager != null
-        && ViewCompat.isAttachedToWindow(this)) {
-      AccessibilityManagerCompat.addTouchExplorationStateChangeListener(
-          accessibilityManager, touchExplorationStateChangeListener);
+        && isAttachedToWindow()) {
+      accessibilityManager.addTouchExplorationStateChangeListener(
+          touchExplorationStateChangeListener);
     }
   }
 
   private void removeTouchExplorationStateChangeListenerIfNeeded() {
     if (touchExplorationStateChangeListener != null && accessibilityManager != null) {
-      AccessibilityManagerCompat.removeTouchExplorationStateChangeListener(
-          accessibilityManager, touchExplorationStateChangeListener);
+      accessibilityManager.removeTouchExplorationStateChangeListener(
+          touchExplorationStateChangeListener);
     }
   }
 
@@ -524,6 +546,7 @@ class EndCompoundLayout extends LinearLayout {
   void setEndIconContentDescription(@Nullable CharSequence endIconContentDescription) {
     if (getEndIconContentDescription() != endIconContentDescription) {
       endIconView.setContentDescription(endIconContentDescription);
+      updateIconTooltip(endIconView, endIconOnLongClickListener, endIconContentDescription);
     }
   }
 
@@ -544,6 +567,31 @@ class EndCompoundLayout extends LinearLayout {
       this.endIconTintMode = endIconTintMode;
       applyIconTint(textInputLayout, endIconView, endIconTintList, this.endIconTintMode);
     }
+  }
+
+  void setEndIconMinSize(@Px int iconSize) {
+    if (iconSize < 0) {
+      throw new IllegalArgumentException("endIconSize cannot be less than 0");
+    }
+    if (iconSize != endIconMinSize) {
+      endIconMinSize = iconSize;
+      setIconMinSize(endIconView, iconSize);
+      setIconMinSize(errorIconView, iconSize);
+    }
+  }
+
+  int getEndIconMinSize() {
+    return endIconMinSize;
+  }
+
+  void setEndIconScaleType(@NonNull ScaleType endIconScaleType) {
+    this.endIconScaleType = endIconScaleType;
+    setIconScaleType(endIconView, endIconScaleType);
+    setIconScaleType(errorIconView, endIconScaleType);
+  }
+
+  @NonNull ScaleType getEndIconScaleType() {
+    return endIconScaleType;
   }
 
   void addOnEndIconChangedListener(@NonNull OnEndIconChangedListener listener) {
@@ -686,16 +734,28 @@ class EndCompoundLayout extends LinearLayout {
       return;
     }
     int endPadding =
-        (isEndIconVisible() || isErrorIconVisible())
-            ? 0 : ViewCompat.getPaddingEnd(textInputLayout.editText);
-    ViewCompat.setPaddingRelative(
-        suffixTextView,
+        (isEndIconVisible() || isErrorIconVisible()) ? 0 : textInputLayout.editText.getPaddingEnd();
+    suffixTextView.setPaddingRelative(
         getContext()
             .getResources()
             .getDimensionPixelSize(R.dimen.material_input_text_to_prefix_suffix_padding),
         textInputLayout.editText.getPaddingTop(),
         endPadding,
         textInputLayout.editText.getPaddingBottom());
+  }
+
+  int getSuffixTextEndOffset() {
+    int endIconOffset;
+    if (isEndIconVisible() || isErrorIconVisible()) {
+      endIconOffset =
+          endIconView.getMeasuredWidth()
+              + ((MarginLayoutParams) endIconView.getLayoutParams()).getMarginStart();
+    } else {
+      endIconOffset = 0;
+    }
+    return getPaddingEnd()
+        + suffixTextView.getPaddingEnd()
+        + endIconOffset;
   }
 
   @Nullable
@@ -748,8 +808,7 @@ class EndCompoundLayout extends LinearLayout {
       // Setting the tint here instead of calling setEndIconTintList() in order to preserve and
       // restore the icon's original tint.
       Drawable endIconDrawable = DrawableCompat.wrap(getEndIconDrawable()).mutate();
-      DrawableCompat.setTint(
-          endIconDrawable, textInputLayout.getErrorCurrentTextColors());
+      endIconDrawable.setTint(textInputLayout.getErrorCurrentTextColors());
       endIconView.setImageDrawable(endIconDrawable);
     } else {
       applyIconTint(textInputLayout, endIconView, endIconTintList, endIconTintMode);

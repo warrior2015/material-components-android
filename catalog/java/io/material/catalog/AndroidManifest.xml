@@ -25,9 +25,9 @@
   <application
     android:name="io.material.catalog.application.${application_name}"
     android:allowBackup="true"
+    android:enableOnBackInvokedCallback="true"
     android:icon="@mipmap/ic_launcher"
     android:label="@string/cat_app_name"
-    android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:theme="@style/Theme.${application_theme}">
     <meta-data
@@ -36,7 +36,8 @@
 
     <activity
       android:name=".main.MainActivity"
-      android:exported="true">
+      android:exported="true"
+      android:windowSoftInputMode="adjustResize">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
@@ -50,6 +51,10 @@
       android:name=".navigationdrawer.NavigationDrawerDemoActivity"
       android:exported="true"
       android:label="@string/cat_navigationdrawer_title" />
+    <activity
+      android:name=".navigationdrawer.CustomNavigationDrawerDemoActivity"
+      android:exported="true"
+      android:label="@string/cat_navigationdrawer_custom_title" />
     <activity
       android:name=".topappbar.TopAppBarActionBarDemoActivity"
       android:exported="true"
@@ -96,6 +101,18 @@
       android:exported="true" />
     <activity
       android:name="io.material.catalog.color.ColorHarmonizationDemoActivity"
+      android:exported="true" />
+    <activity
+      android:name="io.material.catalog.search.SearchMainDemoActivity"
+      android:windowSoftInputMode="adjustNothing"
+      android:exported="true" />
+    <activity
+      android:name="io.material.catalog.search.SearchRecyclerDemoActivity"
+      android:windowSoftInputMode="adjustNothing"
+      android:exported="true" />
+    <activity
+      android:name="io.material.catalog.search.SearchBarWithAppBarIconsDemoActivity"
+      android:windowSoftInputMode="adjustNothing"
       android:exported="true" />
   </application>
 

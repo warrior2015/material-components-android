@@ -1,4 +1,3 @@
-[![Build Status](https://img.shields.io/travis/material-components/material-components-android/master.svg)](https://travis-ci.org/material-components/material-components-android/)
 [![Chat](https://img.shields.io/discord/259087343246508035.svg)](https://discord.gg/material-components)
 
 # Material Components for Android
@@ -22,6 +21,10 @@ For usage questions: ask on
 [Stack  Overflow](http://stackoverflow.com/questions/tagged/material-components).
 
 Bugs or feature requests should be submitted at our [GitHub Issues section](https://github.com/material-components/material-components-android/issues).
+
+Note: If your issue or feature request is for Material Jetpack Compose, please
+file it at the [Compose Issue Tracker](https://issuetracker.google.com/issues/new?component=742043&template=1346811)
+instead.
 
 ## Useful Links
 - [All Components](https://github.com/material-components/material-components-android/tree/master/lib/)

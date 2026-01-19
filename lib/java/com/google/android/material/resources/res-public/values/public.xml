@@ -29,9 +29,26 @@
   <public name="trackColor" type="attr" />
   <public name="navigationIconTint" type="attr" />
 
-  <!-- Navigation and datepicker -->
+  <!-- Navigation and DatePicker -->
   <public name="headerLayout" type="attr"/>
   <public name="itemTextColor" type="attr"/>
   <public name="itemShapeAppearance" type="attr"/>
   <public name="itemShapeAppearanceOverlay" type="attr"/>
+
+  <!-- Sheets -->
+  <public name="behavior_draggable" type="attr" />
+
+  <!-- Slider and ProgressIndicator -->
+  <public name="trackStopIndicatorSize" type="attr"/>
+
+  <!-- ProgressIndicator and LoadingIndicator -->
+  <public name="indicatorColor" type="attr"/>
+  <public name="indicatorSize" type="attr"/>
+  <public name="showDelay" type="attr"/>
+  <public name="minHideDelay" type="attr"/>
+
+  <!-- Button Group and Overflow Linear Layout -->
+  <public name="layout_overflowIcon" type="attr"/>
+  <public name="layout_overflowText" type="attr"/>
+  <public name="overflowButtonIcon" type="attr"/>
 </resources>

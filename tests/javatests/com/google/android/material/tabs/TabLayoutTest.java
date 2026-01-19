@@ -225,16 +225,19 @@ public class TabLayoutTest {
     assertTrue(tab3.isSelected());
     assertFalse(tab1.isSelected());
     assertFalse(tab2.isSelected());
+    assertEquals(2, tabs.indicatorPosition);
 
     tabs.selectTab(tab2);
     assertTrue(tab2.isSelected());
     assertFalse(tab1.isSelected());
     assertFalse(tab3.isSelected());
+    assertEquals(1, tabs.indicatorPosition);
 
     tabs.selectTab(tab1);
     assertTrue(tab1.isSelected());
     assertFalse(tab2.isSelected());
     assertFalse(tab3.isSelected());
+    assertEquals(0, tabs.indicatorPosition);
   }
 
   @Test
@@ -361,7 +364,6 @@ public class TabLayoutTest {
     testSetScrollPosition(true);
   }
 
-  @SdkSuppress(minSdkVersion = Build.VERSION_CODES.JELLY_BEAN_MR1)
   @Test
   public void setScrollPositionRtl() throws Throwable {
     testSetScrollPosition(false);
@@ -498,6 +500,20 @@ public class TabLayoutTest {
     Espresso.unregisterIdlingResources(idler);
   }
 
+  @Test
+  @UiThreadTest
+  public void testSetCustomTabReplacesCustomView() {
+    final LayoutInflater inflater = LayoutInflater.from(activityTestRule.getActivity());
+    final TabLayout tabLayout = (TabLayout) inflater.inflate(R.layout.design_tabs, null);
+    final TabLayout.Tab tab = tabLayout.newTab();
+    tab.setCustomView(R.layout.design_tab_item_custom);
+    tabLayout.addTab(tab);
+    tab.setCustomView(R.layout.design_tab_item_custom_alternate);
+
+    assertNull(tabLayout.findViewById(R.id.my_custom_tab));
+    assertNotNull(tabLayout.findViewById(R.id.my_custom_alternate_tab));
+  }
+
   /**
    * Tests that the indicator animation still functions as intended when modifying the animator's
    * update listener, instead of removing/recreating the animator itself.
@@ -533,6 +549,7 @@ public class TabLayoutTest {
 
               assertEquals(tabs1.tabSelectedIndicator.getBounds().left, tabTwoLeft);
               assertEquals(tabs1.tabSelectedIndicator.getBounds().right, tabTwoRight);
+              assertEquals(2, tabs.indicatorPosition);
             });
 
     IdlingRegistry.getInstance().unregister(idler);

@@ -21,6 +21,9 @@ import android.content.SharedPreferences;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.view.Window;
+import android.view.WindowInsets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
 import com.google.android.material.internal.EdgeToEdgeUtils;
 
 /** Helper that saves the current window preferences for the Catalog. */
@@ -30,9 +33,22 @@ public class WindowPreferencesManager {
   private static final String KEY_EDGE_TO_EDGE_ENABLED = "edge_to_edge_enabled";
 
   private final Context context;
+  private final OnApplyWindowInsetsListener listener;
 
   public WindowPreferencesManager(Context context) {
     this.context = context;
+    this.listener =
+        (v, insets) -> {
+          int leftInset = insets.getStableInsetLeft();
+          int rightInset = insets.getStableInsetRight();
+          if (VERSION.SDK_INT >= VERSION_CODES.R) {
+            leftInset = insets.getInsets(WindowInsets.Type.systemBars()).left;
+            rightInset = insets.getInsets(WindowInsets.Type.systemBars()).right;
+          }
+
+          v.setPadding(leftInset, 0, rightInset, 0);
+          return insets;
+        };
   }
 
   @SuppressWarnings("ApplySharedPref")
@@ -51,6 +67,8 @@ public class WindowPreferencesManager {
   @SuppressWarnings("RestrictTo")
   public void applyEdgeToEdgePreference(Window window) {
     EdgeToEdgeUtils.applyEdgeToEdge(window, isEdgeToEdgeEnabled());
+    ViewCompat.setOnApplyWindowInsetsListener(
+        window.getDecorView(), isEdgeToEdgeEnabled() ? listener : null);
   }
 
   private SharedPreferences getSharedPreferences() {

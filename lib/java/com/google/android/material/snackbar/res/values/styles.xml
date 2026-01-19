@@ -57,7 +57,7 @@
     <item name="android:alpha">@dimen/material_emphasis_high_type</item>
     <item name="android:ellipsize">end</item>
     <item name="android:maxLines">@integer/design_snackbar_text_max_lines</item>
-    <item name="android:textAlignment" tools:ignore="NewApi">viewStart</item>
+    <item name="android:textAlignment">viewStart</item>
     <item name="android:textAppearance">?attr/textAppearanceBody2</item>
     <item name="android:textColor">?attr/colorSurface</item>
     <item name="android:paddingTop">@dimen/design_snackbar_padding_vertical</item>
@@ -70,7 +70,7 @@
   <style name="Base.Widget.Material3.Snackbar" parent="Base.Widget.MaterialComponents.Snackbar">
     <item name="enforceMaterialTheme">true</item>
     <item name="materialThemeOverlay">@style/ThemeOverlay.Material3.Snackbar</item>
-    <item name="backgroundTint">?attr/colorSurfaceInverse</item>
+    <item name="backgroundTint">@macro/m3_comp_snackbar_container_color</item>
     <item name="actionTextColorAlpha">@dimen/m3_snackbar_action_text_color_alpha</item>
   </style>
 
@@ -80,7 +80,8 @@
     <item name="android:background">@null</item>
     <item name="android:layout_margin">@dimen/m3_snackbar_margin</item>
     <item name="animationMode">fade</item>
-    <item name="shapeAppearance">?attr/shapeAppearanceCornerExtraSmall</item>
+    <item name="shapeAppearance">@macro/m3_comp_snackbar_container_shape</item>
+    <item name="elevation">@dimen/m3_comp_snackbar_container_elevation</item>
   </style>
 
   <!-- Style for a full width M3 Snackbar. -->
@@ -90,8 +91,8 @@
 
   <style name="Widget.Material3.Snackbar.TextView" parent="Widget.MaterialComponents.Snackbar.TextView">
     <item name="android:alpha">@dimen/m3_snackbar_action_text_color_alpha</item>
-    <item name="android:textColor">?attr/colorOnSurfaceInverse</item>
-    <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+    <item name="android:textColor">@macro/m3_comp_snackbar_supporting_text_color</item>
+    <item name="android:textAppearance">@macro/m3_comp_snackbar_supporting_text_type</item>
   </style>
 
   <style name="ThemeOverlay.Material3.Snackbar" parent="">

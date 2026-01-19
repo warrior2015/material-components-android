@@ -16,6 +16,8 @@
 
 package com.google.android.material.timepicker;
 
+import com.google.android.material.R;
+
 import static com.google.android.material.timepicker.TimeFormat.CLOCK_12H;
 import static com.google.android.material.timepicker.TimeFormat.CLOCK_24H;
 import static java.util.Calendar.AM;
@@ -26,6 +28,8 @@ import android.content.res.Resources;
 import android.os.Parcel;
 import android.os.Parcelable;
 import androidx.annotation.IntRange;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import com.google.android.material.timepicker.TimePickerControls.ActiveSelection;
 import com.google.android.material.timepicker.TimePickerControls.ClockPeriod;
 import java.util.Arrays;
@@ -36,9 +40,6 @@ class TimeModel implements Parcelable {
   public static final String ZERO_LEADING_NUMBER_FORMAT = "%02d";
   public static final String NUMBER_FORMAT = "%d";
 
-  private final MaxInputValidator minuteInputValidator;
-  private final MaxInputValidator hourInputValidator;
-
   @TimeFormat final int format;
 
   int hour;
@@ -46,7 +47,6 @@ class TimeModel implements Parcelable {
 
   @ActiveSelection int selection;
   @ClockPeriod int period;
-
 
   public TimeModel() {
     this(CLOCK_12H);
@@ -62,8 +62,6 @@ class TimeModel implements Parcelable {
     this.selection = selection;
     this.format = format;
     period = getPeriod(hour);
-    minuteInputValidator = new MaxInputValidator(59);
-    hourInputValidator = new MaxInputValidator(format == CLOCK_24H ? 24 : 12);
   }
 
   protected TimeModel(Parcel in) {
@@ -111,12 +109,9 @@ class TimeModel implements Parcelable {
     return hour;
   }
 
-  public MaxInputValidator getMinuteInputValidator() {
-    return minuteInputValidator;
-  }
-
-  public MaxInputValidator getHourInputValidator() {
-    return hourInputValidator;
+  @StringRes
+  public int getHourContentDescriptionResId() {
+    return format == CLOCK_24H ? R.string.material_hour_24h_suffix : R.string.material_hour_suffix;
   }
 
   @Override
@@ -156,17 +151,18 @@ class TimeModel implements Parcelable {
   }
 
   @SuppressWarnings("unused")
-  public static final Parcelable.Creator<TimeModel> CREATOR = new Parcelable.Creator<TimeModel>() {
-    @Override
-    public TimeModel createFromParcel(Parcel in) {
-      return new TimeModel(in);
-    }
+  public static final Parcelable.Creator<TimeModel> CREATOR =
+      new Parcelable.Creator<TimeModel>() {
+        @Override
+        public TimeModel createFromParcel(Parcel in) {
+          return new TimeModel(in);
+        }
 
-    @Override
-    public TimeModel[] newArray(int size) {
-      return new TimeModel[size];
-    }
-  };
+        @Override
+        public TimeModel[] newArray(int size) {
+          return new TimeModel[size];
+        }
+      };
 
   public void setPeriod(@ClockPeriod int period) {
     if (period != this.period) {
@@ -179,14 +175,18 @@ class TimeModel implements Parcelable {
     }
   }
 
+  @Nullable
   public static String formatText(Resources resources, CharSequence text) {
     return formatText(resources, text, ZERO_LEADING_NUMBER_FORMAT);
   }
 
+  @Nullable
   public static String formatText(Resources resources, CharSequence text, String format) {
-    return String.format(
-        resources.getConfiguration().locale,
-        format,
-        Integer.parseInt(String.valueOf(text)));
+    try {
+      return String.format(
+          resources.getConfiguration().locale, format, Integer.parseInt(String.valueOf(text)));
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 }

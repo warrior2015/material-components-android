@@ -15,9 +15,8 @@
  */
 package com.google.android.material.color;
 
-import com.google.android.material.R;
-
 import static android.graphics.Color.TRANSPARENT;
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -29,8 +28,12 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.FloatRange;
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
+import com.google.android.material.color.utilities.Blend;
+import com.google.android.material.color.utilities.Hct;
 import com.google.android.material.resources.MaterialAttributes;
 
 /**
@@ -51,10 +54,15 @@ public class MaterialColors {
   private static final int TONE_ON_ACCENT_LIGHT = 100;
   private static final int TONE_ACCENT_CONTAINER_LIGHT = 90;
   private static final int TONE_ON_ACCENT_CONTAINER_LIGHT = 10;
+  private static final int TONE_SURFACE_CONTAINER_LIGHT = 94;
+  private static final int TONE_SURFACE_CONTAINER_HIGH_LIGHT = 92;
   private static final int TONE_ACCENT_DARK = 80;
   private static final int TONE_ON_ACCENT_DARK = 20;
   private static final int TONE_ACCENT_CONTAINER_DARK = 30;
   private static final int TONE_ON_ACCENT_CONTAINER_DARK = 90;
+  private static final int TONE_SURFACE_CONTAINER_DARK = 12;
+  private static final int TONE_SURFACE_CONTAINER_HIGH_DARK = 17;
+  private static final int CHROMA_NEUTRAL = 6;
 
   private MaterialColors() {
     // Private constructor to prevent unwanted construction.
@@ -104,12 +112,19 @@ public class MaterialColors {
   @ColorInt
   public static int getColor(
       @NonNull Context context, @AttrRes int colorAttributeResId, @ColorInt int defaultValue) {
+    Integer color = getColorOrNull(context, colorAttributeResId);
+    return color != null ? color : defaultValue;
+  }
+
+  /**
+   * Returns the color int for the provided theme color attribute, or null if the attribute is not
+   * set in the current theme.
+   */
+  @Nullable
+  @ColorInt
+  public static Integer getColorOrNull(@NonNull Context context, @AttrRes int colorAttributeResId) {
     TypedValue typedValue = MaterialAttributes.resolve(context, colorAttributeResId);
-    if (typedValue != null) {
-      return resolveColor(context, typedValue);
-    } else {
-      return defaultValue;
-    }
+    return typedValue != null ? resolveColor(context, typedValue) : null;
   }
 
   /**
@@ -127,6 +142,24 @@ public class MaterialColors {
       resolvedColor = resolveColorStateList(context, typedValue);
     }
     return resolvedColor == null ? defaultValue : resolvedColor;
+  }
+
+  /**
+   * Returns the color state list for the provided theme color attribute, or null if the attribute
+   * is not set in the current theme.
+   */
+  @Nullable
+  public static ColorStateList getColorStateListOrNull(
+      @NonNull Context context, @AttrRes int colorAttributeResId) {
+    TypedValue typedValue = MaterialAttributes.resolve(context, colorAttributeResId);
+    if (typedValue == null) {
+      return null;
+    } else if (typedValue.resourceId != 0) {
+      return ContextCompat.getColorStateList(context, typedValue.resourceId);
+    } else if (typedValue.data != 0) {
+      return ColorStateList.valueOf(typedValue.data);
+    }
+    return null;
   }
 
   private static int resolveColor(@NonNull Context context, @NonNull TypedValue typedValue) {
@@ -228,7 +261,10 @@ public class MaterialColors {
   public static int harmonizeWithPrimary(@NonNull Context context, @ColorInt int colorToHarmonize) {
     return harmonize(
         colorToHarmonize,
-        getColor(context, R.attr.colorPrimary, MaterialColors.class.getCanonicalName()));
+        getColor(
+            context,
+            androidx.appcompat.R.attr.colorPrimary,
+            MaterialColors.class.getCanonicalName()));
   }
 
   /**
@@ -251,9 +287,7 @@ public class MaterialColors {
    */
   @NonNull
   public static ColorRoles getColorRoles(@NonNull Context context, @ColorInt int color) {
-    return getColorRoles(
-        color,
-        MaterialAttributes.resolveBoolean(context, R.attr.isLightTheme, /* defaultValue= */ true));
+    return getColorRoles(color, isLightTheme(context));
   }
 
   /**
@@ -277,10 +311,59 @@ public class MaterialColors {
             getColorRole(color, TONE_ON_ACCENT_CONTAINER_DARK));
   }
 
+  /**
+   * Returns the color int of the surface container color role, based on the provided input color.
+   * This method should be only used internally.
+   *
+   * @param context The target context.
+   * @param seedColor The input color provided for generating surface container color role.
+   *
+   * @hide
+   */
+  @RestrictTo(LIBRARY_GROUP)
+  @ColorInt
+  public static int getSurfaceContainerFromSeed(@NonNull Context context, @ColorInt int seedColor) {
+    int tone = isLightTheme(context) ? TONE_SURFACE_CONTAINER_LIGHT : TONE_SURFACE_CONTAINER_DARK;
+    return getColorRole(seedColor, tone, CHROMA_NEUTRAL);
+  }
+
+  /**
+   * Returns the color int of the surface container high color role, based on the provided input
+   * color. This method should be only used internally.
+   *
+   * @param context The target context.
+   * @param seedColor The input color provided for generating surface container high color role.
+   *
+   * @hide
+   */
+  @RestrictTo(LIBRARY_GROUP)
+  @ColorInt
+  public static int getSurfaceContainerHighFromSeed(
+      @NonNull Context context, @ColorInt int seedColor) {
+    int tone =
+        isLightTheme(context)
+            ? TONE_SURFACE_CONTAINER_HIGH_LIGHT
+            : TONE_SURFACE_CONTAINER_HIGH_DARK;
+    return getColorRole(seedColor, tone, CHROMA_NEUTRAL);
+  }
+
+  static boolean isLightTheme(@NonNull Context context) {
+    return MaterialAttributes.resolveBoolean(
+        context, androidx.appcompat.R.attr.isLightTheme, /* defaultValue= */ true);
+  }
+
   @ColorInt
   private static int getColorRole(@ColorInt int color, @IntRange(from = 0, to = 100) int tone) {
     Hct hctColor = Hct.fromInt(color);
     hctColor.setTone(tone);
+    return hctColor.toInt();
+  }
+
+  @ColorInt
+  private static int getColorRole(
+      @ColorInt int color, @IntRange(from = 0, to = 100) int tone, int chroma) {
+    Hct hctColor = Hct.fromInt(getColorRole(color, tone));
+    hctColor.setChroma(chroma);
     return hctColor.toInt();
   }
 }

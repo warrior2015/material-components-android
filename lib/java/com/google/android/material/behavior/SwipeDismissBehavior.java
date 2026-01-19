@@ -85,6 +85,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
   ViewDragHelper viewDragHelper;
   OnDismissListener listener;
   private boolean interceptingEvents;
+  private boolean requestingDisallowInterceptTouchEvent;
 
   private float sensitivity = 0f;
   private boolean sensitivitySet;
@@ -176,9 +177,8 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
   public boolean onLayoutChild(
       @NonNull CoordinatorLayout parent, @NonNull V child, int layoutDirection) {
     boolean handled = super.onLayoutChild(parent, child, layoutDirection);
-    if (ViewCompat.getImportantForAccessibility(child)
-        == ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
-      ViewCompat.setImportantForAccessibility(child, ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_YES);
+    if (child.getImportantForAccessibility() == View.IMPORTANT_FOR_ACCESSIBILITY_AUTO) {
+      child.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
       updateAccessibilityActions(child);
     }
     return handled;
@@ -204,7 +204,8 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
 
     if (dispatchEventToHelper) {
       ensureViewDragHelper(parent);
-      return viewDragHelper.shouldInterceptTouchEvent(event);
+      return !requestingDisallowInterceptTouchEvent
+          && viewDragHelper.shouldInterceptTouchEvent(event);
     }
     return false;
   }
@@ -212,7 +213,11 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
   @Override
   public boolean onTouchEvent(CoordinatorLayout parent, V child, MotionEvent event) {
     if (viewDragHelper != null) {
-      viewDragHelper.processTouchEvent(event);
+      // Don't process CANCEL sent for requesting disallow intercept touch event.
+      if (!requestingDisallowInterceptTouchEvent
+          || event.getActionMasked() != MotionEvent.ACTION_CANCEL) {
+        viewDragHelper.processTouchEvent(event);
+      }
       return true;
     }
     return false;
@@ -251,7 +256,12 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
           // intercepting
           final ViewParent parent = capturedChild.getParent();
           if (parent != null) {
+            // The requestDisallowInterceptTouchEvent() will send a CANCEL event to all children's
+            // onInterceptTouchEvent(). This breaks the ongoing dragging event sequence. We
+            // temporarily ignore all CANCEL event while requesting.
+            requestingDisallowInterceptTouchEvent = true;
             parent.requestDisallowInterceptTouchEvent(true);
+            requestingDisallowInterceptTouchEvent = false;
           }
         }
 
@@ -283,7 +293,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
           }
 
           if (viewDragHelper.settleCapturedViewAt(targetLeft, child.getTop())) {
-            ViewCompat.postOnAnimation(child, new SettleRunnable(child, dismiss));
+            child.postOnAnimation(new SettleRunnable(child, dismiss));
           } else if (dismiss && listener != null) {
             listener.onDismiss(child);
           }
@@ -291,8 +301,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
 
         private boolean shouldDismiss(@NonNull View child, float xVelocity) {
           if (xVelocity != 0f) {
-            final boolean isRtl =
-                ViewCompat.getLayoutDirection(child) == ViewCompat.LAYOUT_DIRECTION_RTL;
+            final boolean isRtl = child.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
 
             if (swipeDirection == SWIPE_DIRECTION_ANY) {
               // We don't care about the direction so return true
@@ -322,8 +331,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
 
         @Override
         public int clampViewPositionHorizontal(@NonNull View child, int left, int dx) {
-          final boolean isRtl =
-              ViewCompat.getLayoutDirection(child) == ViewCompat.LAYOUT_DIRECTION_RTL;
+          final boolean isRtl = child.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
           int min;
           int max;
 
@@ -359,17 +367,18 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
         @Override
         public void onViewPositionChanged(@NonNull View child, int left, int top, int dx, int dy) {
           final float startAlphaDistance =
-              originalCapturedViewLeft + child.getWidth() * alphaStartSwipeDistance;
+              child.getWidth() * alphaStartSwipeDistance;
           final float endAlphaDistance =
-              originalCapturedViewLeft + child.getWidth() * alphaEndSwipeDistance;
+              child.getWidth() * alphaEndSwipeDistance;
+          final float currentDistance = Math.abs(left - originalCapturedViewLeft);
 
-          if (left <= startAlphaDistance) {
+          if (currentDistance <= startAlphaDistance) {
             child.setAlpha(1f);
-          } else if (left >= endAlphaDistance) {
+          } else if (currentDistance >= endAlphaDistance) {
             child.setAlpha(0f);
           } else {
             // We're between the start and end distances
-            final float distance = fraction(startAlphaDistance, endAlphaDistance, left);
+            final float distance = fraction(startAlphaDistance, endAlphaDistance, currentDistance);
             child.setAlpha(clamp(0f, 1f - distance, 1f));
           }
         }
@@ -396,7 +405,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
     @Override
     public void run() {
       if (viewDragHelper != null && viewDragHelper.continueSettling(true)) {
-        ViewCompat.postOnAnimation(view, this);
+        view.postOnAnimation(this);
       } else {
         if (dismiss && listener != null) {
           listener.onDismiss(view);
@@ -416,8 +425,7 @@ public class SwipeDismissBehavior<V extends View> extends CoordinatorLayout.Beha
             @Override
             public boolean perform(@NonNull View view, @Nullable CommandArguments arguments) {
               if (canSwipeDismissView(view)) {
-                final boolean isRtl =
-                    ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_RTL;
+                final boolean isRtl = view.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
                 boolean dismissToLeft =
                     (swipeDirection == SWIPE_DIRECTION_START_TO_END && isRtl)
                         || (swipeDirection == SWIPE_DIRECTION_END_TO_START && !isRtl);

@@ -32,25 +32,30 @@ import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
 import android.widget.Checkable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.ViewCompat;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.timepicker.ClockHandView.OnActionUpListener;
 import com.google.android.material.timepicker.ClockHandView.OnRotateListener;
+import com.google.android.material.timepicker.RadialViewGroup.Level;
 import java.util.Locale;
 
 /**
  * The main view to display a time picker.
  *
- * <p> A time picker prompts the user to choose the time of day.
+ * <p>A time picker prompts the user to choose the time of day.
  *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/TimePicker.md">component
+ * developer guidance</a> and <a href="https://material.io/components/time-pickers/overview">design
+ * guidelines</a>.
  */
 class TimePickerView extends ConstraintLayout implements TimePickerControls {
 
@@ -117,6 +122,13 @@ class TimePickerView extends ConstraintLayout implements TimePickerControls {
     minuteView = findViewById(R.id.material_minute_tv);
     hourView = findViewById(R.id.material_hour_tv);
     clockHandView = findViewById(R.id.material_clock_hand);
+
+    clockFace.setOnEnterKeyPressedListener(
+        () -> {
+          if (hourView.isChecked() && onSelectionChangeListener != null) {
+            onSelectionChangeListener.onSelectionChanged(MINUTE);
+          }
+        });
 
     setupDoubleTap();
 
@@ -219,11 +231,9 @@ class TimePickerView extends ConstraintLayout implements TimePickerControls {
 
   private void updateSelection(Chip chip, boolean isSelected) {
     chip.setChecked(isSelected);
-    ViewCompat.setAccessibilityLiveRegion(
-        chip,
-        isSelected
-            ? ViewCompat.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
-            : ViewCompat.ACCESSIBILITY_LIVE_REGION_NONE);
+    chip.setAccessibilityLiveRegion(isSelected
+        ? View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+        : View.ACCESSIBILITY_LIVE_REGION_NONE);
   }
 
   public void addOnRotateListener(OnRotateListener onRotateListener) {
@@ -255,26 +265,16 @@ class TimePickerView extends ConstraintLayout implements TimePickerControls {
   protected void onVisibilityChanged(@NonNull View changedView, int visibility) {
     super.onVisibilityChanged(changedView, visibility);
     if (changedView == this && visibility == VISIBLE) {
-      updateToggleConstraints();
+      hourView.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
     }
   }
 
-  @Override
-  protected void onAttachedToWindow() {
-    super.onAttachedToWindow();
-    updateToggleConstraints();
+  @Level
+  int getCurrentLevel() {
+    return clockFace.getCurrentLevel();
   }
 
-  private void updateToggleConstraints() {
-    if (toggle.getVisibility() == VISIBLE) {
-      // The clock display would normally be centered, clear the constraint on one side to make
-      // room for the toggle
-      ConstraintSet constraintSet = new ConstraintSet();
-      constraintSet.clone(this);
-      boolean isLtr = ViewCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR;
-      int sideToClear = isLtr ? ConstraintSet.RIGHT : ConstraintSet.LEFT;
-      constraintSet.clear(R.id.material_clock_display, sideToClear);
-      constraintSet.applyTo(this);
-    }
+  void setCurrentLevel(@Level int level) {
+    clockFace.setCurrentLevel(level);
   }
 }

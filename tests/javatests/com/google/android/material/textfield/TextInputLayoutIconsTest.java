@@ -17,23 +17,28 @@ package com.google.android.material.textfield;
 
 import static androidx.test.InstrumentationRegistry.getInstrumentation;
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.accessibility.AccessibilityChecks.accessibilityAssertion;
 import static androidx.test.espresso.action.ViewActions.clearText;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.contrib.AccessibilityChecks.accessibilityAssertion;
 import static androidx.test.espresso.matcher.ViewMatchers.hasFocus;
 import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
+import static androidx.test.espresso.matcher.ViewMatchers.isFocusable;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static com.google.android.material.testutils.TestUtilsActions.setCompoundDrawablesRelative;
 import static com.google.android.material.testutils.TestUtilsActions.waitFor;
+import static com.google.android.material.testutils.TestUtilsMatchers.isLongClickable;
 import static com.google.android.material.testutils.TestUtilsMatchers.withCompoundDrawable;
+import static com.google.android.material.testutils.TestUtilsMatchers.withTooltipText;
 import static com.google.android.material.testutils.TextInputLayoutActions.clickIcon;
 import static com.google.android.material.testutils.TextInputLayoutActions.longClickIcon;
 import static com.google.android.material.testutils.TextInputLayoutActions.setCustomEndIconContent;
+import static com.google.android.material.testutils.TextInputLayoutActions.setEndIconContentDescription;
+import static com.google.android.material.testutils.TextInputLayoutActions.setEndIconMinSize;
 import static com.google.android.material.testutils.TextInputLayoutActions.setEndIconMode;
 import static com.google.android.material.testutils.TextInputLayoutActions.setEndIconOnClickListener;
 import static com.google.android.material.testutils.TextInputLayoutActions.setEndIconOnLongClickListener;
@@ -42,6 +47,7 @@ import static com.google.android.material.testutils.TextInputLayoutActions.setEr
 import static com.google.android.material.testutils.TextInputLayoutActions.setPrefixText;
 import static com.google.android.material.testutils.TextInputLayoutActions.setStartIcon;
 import static com.google.android.material.testutils.TextInputLayoutActions.setStartIconContentDescription;
+import static com.google.android.material.testutils.TextInputLayoutActions.setStartIconMinSize;
 import static com.google.android.material.testutils.TextInputLayoutActions.setStartIconOnClickListener;
 import static com.google.android.material.testutils.TextInputLayoutActions.setStartIconOnLongClickListener;
 import static com.google.android.material.testutils.TextInputLayoutActions.setStartIconTintList;
@@ -62,6 +68,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -70,9 +77,11 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.text.method.PasswordTransformationMethod;
 import android.text.method.TransformationMethod;
 import android.view.KeyEvent;
+import android.view.View;
 import android.widget.EditText;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.drawable.TintAwareDrawable;
@@ -86,6 +95,8 @@ import com.google.android.material.testapp.R;
 import com.google.android.material.testapp.TextInputLayoutWithIconsActivity;
 import com.google.android.material.testapp.base.RecreatableAppCompatActivity;
 import com.google.android.material.testutils.ActivityUtils;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.hamcrest.Matcher;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -924,6 +935,150 @@ public class TextInputLayoutIconsTest {
         .check(matches(withCompoundDrawable(1, top)))
         .check(matches(withCompoundDrawable(2, end)))
         .check(matches(withCompoundDrawable(3, bottom)));
+  }
+
+  @Test
+  public void testStartIconIconSize() {
+    final Activity activity = activityTestRule.getActivity();
+    final TextInputLayout textInputLayout =
+        activity.findViewById(R.id.textinput_starticon);
+
+    onView(
+        withId(R.id.textinput_starticon)).perform(setStartIconMinSize(50));
+    assertEquals(50, textInputLayout.getStartIconMinSize());
+  }
+
+  @Test
+  public void testStartIconInvalidIconSize() {
+    assertThrows(IllegalArgumentException.class, () -> onView(
+        withId(R.id.textinput_starticon)).perform(setStartIconMinSize(-1)));
+  }
+
+  @Test
+  public void testEndIconIconSize() {
+    final Activity activity = activityTestRule.getActivity();
+    final TextInputLayout textInputLayout =
+        activity.findViewById(R.id.textinput_suffix);
+
+    onView(
+        withId(R.id.textinput_suffix)).perform(setEndIconMinSize(50));
+    assertEquals(50, textInputLayout.getEndIconMinSize());
+  }
+
+  @Test
+  public void testEndIconInvalidIconSize() {
+    assertThrows(IllegalArgumentException.class, () -> onView(
+        withId(R.id.textinput_suffix)).perform(setEndIconMinSize(-1)));
+  }
+
+  @Test
+  public void testEndIconTooltip() {
+    final String tooltip = "Tooltip text";
+    final int textInputLayoutId = R.id.textinput_no_icon;
+    final Matcher<View> endIconMatcher =
+        allOf(withId(R.id.text_input_end_icon), isDescendantOfA(withId(textInputLayoutId)));
+    setUpCustomEndIconWithTooltip(textInputLayoutId, tooltip);
+
+    final Matcher<View> hasTooltipMatcher =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? withTooltipText(tooltip)
+            : isLongClickable();
+    final Matcher<View> hasNoTooltipMatcher =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? withTooltipText(null)
+            : not(isLongClickable());
+
+    // The icon should not be focusable and have no tooltip by default.
+    onView(endIconMatcher).check(matches(allOf(not(isFocusable()), hasNoTooltipMatcher)));
+
+    // When an OnClickListener is set, the icon should become focusable and show a tooltip.
+    onView(withId(textInputLayoutId)).perform(setEndIconOnClickListener(v -> {}));
+    onView(endIconMatcher).check(matches(allOf(isFocusable(), hasTooltipMatcher)));
+
+    // When the OnClickListener is removed, the icon should no longer be focusable or have a
+    // tooltip.
+    onView(withId(textInputLayoutId)).perform(setEndIconOnClickListener(null));
+    onView(endIconMatcher).check(matches(allOf(not(isFocusable()), hasNoTooltipMatcher)));
+  }
+
+  @Test
+  public void testEndIconTooltip_withLongClickListener() {
+    final AtomicBoolean longClicked = new AtomicBoolean(false);
+    final int textInputLayoutId = R.id.textinput_no_icon;
+
+    setUpCustomEndIconWithTooltip(textInputLayoutId, "tooltip");
+    onView(withId(textInputLayoutId))
+        .perform(
+            setEndIconOnLongClickListener(
+                v -> {
+                  longClicked.set(true);
+                  return true;
+                }));
+    onView(withId(textInputLayoutId)).perform(longClickIcon(true));
+
+    assertTrue(longClicked.get());
+  }
+
+  @Test
+  public void testStartIconTooltip() {
+    final String tooltip = "Tooltip text";
+    final int textInputLayoutId = R.id.textinput_no_icon;
+    final Matcher<View> startIconMatcher =
+        allOf(withId(R.id.text_input_start_icon), isDescendantOfA(withId(textInputLayoutId)));
+    setUpStartIconWithTooltip(textInputLayoutId, tooltip);
+
+    final Matcher<View> hasTooltipMatcher =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? withTooltipText(tooltip)
+            : isLongClickable();
+    final Matcher<View> hasNoTooltipMatcher =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? withTooltipText(null)
+            : not(isLongClickable());
+
+    // The icon should not be focusable and have no tooltip by default.
+    onView(startIconMatcher).check(matches(allOf(not(isFocusable()), hasNoTooltipMatcher)));
+
+    // When an OnClickListener is set, the icon should become focusable and show a tooltip.
+    onView(withId(textInputLayoutId)).perform(setStartIconOnClickListener(v -> {}));
+    onView(startIconMatcher).check(matches(allOf(isFocusable(), hasTooltipMatcher)));
+
+    // When the OnClickListener is removed, the icon should no longer be focusable or have a
+    // tooltip.
+    onView(withId(textInputLayoutId)).perform(setStartIconOnClickListener(null));
+    onView(startIconMatcher).check(matches(allOf(not(isFocusable()), hasNoTooltipMatcher)));
+  }
+
+  @Test
+  public void testStartIconTooltip_withLongClickListener() {
+    final AtomicBoolean longClicked = new AtomicBoolean(false);
+    final int textInputLayoutId = R.id.textinput_no_icon;
+
+    setUpStartIconWithTooltip(textInputLayoutId, "tooltip");
+    onView(withId(textInputLayoutId))
+        .perform(
+            setStartIconOnLongClickListener(
+                v -> {
+                  longClicked.set(true);
+                  return true;
+                }));
+    onView(withId(textInputLayoutId)).perform(longClickIcon(false));
+
+    assertTrue(longClicked.get());
+  }
+
+  private void setUpCustomEndIconWithTooltip(int textInputLayoutId, String tooltip) {
+    onView(withId(textInputLayoutId))
+        .perform(
+            setEndIconMode(TextInputLayout.END_ICON_CUSTOM),
+            setCustomEndIconContent(),
+            setEndIconContentDescription(tooltip));
+  }
+
+  private void setUpStartIconWithTooltip(int textInputLayoutId, String tooltip) {
+    onView(withId(textInputLayoutId))
+        .perform(
+            setStartIcon(new ColorDrawable(Color.BLACK)), setStartIconContentDescription(tooltip));
   }
 
   private static ViewAssertion isPasswordToggledVisible(final boolean isToggledVisible) {

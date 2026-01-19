@@ -25,6 +25,7 @@ import static androidx.viewpager.widget.ViewPager.SCROLL_STATE_SETTLING;
 import static com.google.android.material.animation.AnimationUtils.FAST_OUT_SLOW_IN_INTERPOLATOR;
 import static com.google.android.material.theme.overlay.MaterialThemeOverlay.wrap;
 
+import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -35,10 +36,8 @@ import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.os.Build.VERSION;
@@ -57,9 +56,7 @@ import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
-import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -73,13 +70,10 @@ import androidx.annotation.IntDef;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.StringRes;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.util.Pools;
-import androidx.core.view.GravityCompat;
-import androidx.core.view.MarginLayoutParamsCompat;
 import androidx.core.view.PointerIconCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
@@ -94,10 +88,12 @@ import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.drawable.DrawableUtils;
 import com.google.android.material.internal.ThemeEnforcement;
 import com.google.android.material.internal.ViewUtils;
+import com.google.android.material.motion.MotionUtils;
 import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.ripple.RippleUtils;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.MaterialShapeUtils;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
@@ -161,6 +157,11 @@ import java.util.Iterator;
  * &lt;/androidx.viewpager.widget.ViewPager&gt;
  * </pre>
  *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/Tabs.md">component
+ * developer guidance</a> and <a href="https://material.io/components/tabs/overview">design
+ * guidelines</a>.
+ *
  * @see <a href="http://www.google.com/design/spec/components/tabs.html">Tabs</a>
  * @attr ref com.google.android.material.R.styleable#TabLayout_tabPadding
  * @attr ref com.google.android.material.R.styleable#TabLayout_tabPaddingStart
@@ -206,7 +207,7 @@ public class TabLayout extends HorizontalScrollView {
   /**
    * Scrollable tabs display a subset of tabs at any given moment, and can contain longer tab labels
    * and a larger number of tabs. They are best used for browsing contexts in touch interfaces when
-   * users don’t need to directly compare the tab labels.
+   * users don't need to directly compare the tab labels.
    *
    * @see #setTabMode(int)
    * @see #getTabMode()
@@ -215,7 +216,7 @@ public class TabLayout extends HorizontalScrollView {
 
   /**
    * Fixed tabs display all tabs concurrently and are best used with content that benefits from
-   * quick pivots between tabs. The maximum number of tabs is limited by the view’s width. Fixed
+   * quick pivots between tabs. The maximum number of tabs is limited by the view's width. Fixed
    * tabs have equal width, based on the widest tab label.
    *
    * @see #setTabMode(int)
@@ -258,6 +259,7 @@ public class TabLayout extends HorizontalScrollView {
 
   /** @hide */
   @IntDef(value = {TAB_LABEL_VISIBILITY_UNLABELED, TAB_LABEL_VISIBILITY_LABELED})
+  @Retention(RetentionPolicy.SOURCE)
   public @interface LabelVisibility {}
 
   /**
@@ -292,6 +294,9 @@ public class TabLayout extends HorizontalScrollView {
       value = {GRAVITY_FILL, GRAVITY_CENTER, GRAVITY_START})
   @Retention(RetentionPolicy.SOURCE)
   public @interface TabGravity {}
+
+  // indicatorPosition keeps track of where the indicator is.
+  int indicatorPosition = -1;
 
   /**
    * Indicator gravity used to align the tab selection indicator to the bottom of the {@link
@@ -333,8 +338,8 @@ public class TabLayout extends HorizontalScrollView {
   public static final int INDICATOR_GRAVITY_TOP = 2;
 
   /**
-   * Indicator gravity used to stretch the tab selection indicator across the entire height and
-   * width of the {@link TabLayout}. This will disregard {@code tabIndicatorHeight} and the
+   * Indicator gravity used to stretch the tab selection indicator across the entire height
+   * of the {@link TabLayout}. This will disregard {@code tabIndicatorHeight} and the
    * indicator drawable's intrinsic height, if set.
    *
    * @see #setSelectedTabIndicatorGravity(int)
@@ -448,7 +453,9 @@ public class TabLayout extends HorizontalScrollView {
   int tabPaddingEnd;
   int tabPaddingBottom;
 
-  int tabTextAppearance;
+  private final int defaultTabTextAppearance;
+  private final int tabTextAppearance;
+  private int selectedTabTextAppearance = -1;
   ColorStateList tabTextColors;
   ColorStateList tabIconTint;
   ColorStateList tabRippleColorStateList;
@@ -457,6 +464,7 @@ public class TabLayout extends HorizontalScrollView {
 
   android.graphics.PorterDuff.Mode tabIconTintMode;
   float tabTextSize;
+  float selectedTabTextSize;
   float tabTextMultiLineSize;
 
   final int tabBackgroundResId;
@@ -479,6 +487,7 @@ public class TabLayout extends HorizontalScrollView {
   boolean unboundedRipple;
 
   private TabIndicatorInterpolator tabIndicatorInterpolator;
+  private final TimeInterpolator tabIndicatorTimeInterpolator;
 
   @Nullable private BaseOnTabSelectedListener selectedListener;
 
@@ -493,6 +502,7 @@ public class TabLayout extends HorizontalScrollView {
   private TabLayoutOnPageChangeListener pageChangeListener;
   private AdapterChangeListener adapterChangeListener;
   private boolean setupViewPagerImplicitly;
+  private int viewPagerScrollState;
 
   // Pool we use as a simple RecyclerBin
   private final Pools.Pool<TabView> tabViewPool = new Pools.SimplePool<>(12);
@@ -530,13 +540,14 @@ public class TabLayout extends HorizontalScrollView {
             DEF_STYLE_RES,
             R.styleable.TabLayout_tabTextAppearance);
 
-    if (getBackground() instanceof ColorDrawable) {
-      ColorDrawable background = (ColorDrawable) getBackground();
+    ColorStateList backgroundColorStateList =
+        DrawableUtils.getColorStateListOrNull(getBackground());
+    if (backgroundColorStateList != null) {
       MaterialShapeDrawable materialShapeDrawable = new MaterialShapeDrawable();
-      materialShapeDrawable.setFillColor(ColorStateList.valueOf(background.getColor()));
+      materialShapeDrawable.setFillColor(backgroundColorStateList);
       materialShapeDrawable.initializeElevationOverlay(context);
-      materialShapeDrawable.setElevation(ViewCompat.getElevation(this));
-      ViewCompat.setBackground(this, materialShapeDrawable);
+      materialShapeDrawable.setElevation(getElevation());
+      setBackground(materialShapeDrawable);
     }
 
     setSelectedTabIndicator(
@@ -562,6 +573,11 @@ public class TabLayout extends HorizontalScrollView {
     tabPaddingBottom =
         a.getDimensionPixelSize(R.styleable.TabLayout_tabPaddingBottom, tabPaddingBottom);
 
+    if (ThemeEnforcement.isMaterial3Theme(context)) {
+      defaultTabTextAppearance = R.attr.textAppearanceTitleSmall;
+    } else {
+      defaultTabTextAppearance = R.attr.textAppearanceButton;
+    }
     tabTextAppearance =
         a.getResourceId(R.styleable.TabLayout_tabTextAppearance, R.style.TextAppearance_Design_Tab);
 
@@ -580,6 +596,43 @@ public class TabLayout extends HorizontalScrollView {
               androidx.appcompat.R.styleable.TextAppearance_android_textColor);
     } finally {
       ta.recycle();
+    }
+
+    if (a.hasValue(R.styleable.TabLayout_tabSelectedTextAppearance)) {
+      selectedTabTextAppearance =
+          a.getResourceId(R.styleable.TabLayout_tabSelectedTextAppearance, tabTextAppearance);
+    }
+
+    if (selectedTabTextAppearance != -1) {
+      // If there is a selected tab text appearance specified, we take the selected tab text size
+      // and selected color from it.
+      @SuppressLint("CustomViewStyleable")
+      final TypedArray selectedTabTA =
+          context.obtainStyledAttributes(
+              selectedTabTextAppearance, androidx.appcompat.R.styleable.TextAppearance);
+
+      try {
+        selectedTabTextSize =
+            selectedTabTA.getDimensionPixelSize(
+                androidx.appcompat.R.styleable.TextAppearance_android_textSize,
+                (int) tabTextSize);
+        ColorStateList selectedTabTextColor =
+            MaterialResources.getColorStateList(
+                context,
+                selectedTabTA,
+                androidx.appcompat.R.styleable.TextAppearance_android_textColor);
+        // Merge the selected tab color if it's set in the selected tab text appearance.
+        if (selectedTabTextColor != null) {
+          tabTextColors =
+              createColorStateList(
+                  tabTextColors.getDefaultColor(),
+                  selectedTabTextColor.getColorForState(
+                      new int[] {android.R.attr.state_selected},
+                      selectedTabTextColor.getDefaultColor()));
+        }
+      } finally {
+        selectedTabTA.recycle();
+      }
     }
 
     if (a.hasValue(R.styleable.TabLayout_tabTextColor)) {
@@ -606,6 +659,9 @@ public class TabLayout extends HorizontalScrollView {
 
     tabIndicatorAnimationDuration =
         a.getInt(R.styleable.TabLayout_tabIndicatorAnimationDuration, ANIMATION_DURATION);
+    tabIndicatorTimeInterpolator =
+        MotionUtils.resolveThemeInterpolator(
+            context, R.attr.motionEasingEmphasizedInterpolator, FAST_OUT_SLOW_IN_INTERPOLATOR);
 
     requestedTabMinWidth =
         a.getDimensionPixelSize(R.styleable.TabLayout_tabMinWidth, INVALID_WIDTH);
@@ -661,37 +717,60 @@ public class TabLayout extends HorizontalScrollView {
   }
 
   /**
-   * Set the scroll position of the tabs. This is useful for when the tabs are being displayed as
-   * part of a scrolling container such as {@link androidx.viewpager.widget.ViewPager}.
+   * Set the scroll position of the {@link TabLayout}.
    *
-   * <p>Calling this method does not update the selected tab, it is only used for drawing purposes.
-   *
-   * @param position current scroll position
+   * @param position Position of the tab to scroll.
    * @param positionOffset Value from [0, 1) indicating the offset from {@code position}.
-   * @param updateSelectedText Whether to update the text's selected state.
+   * @param updateSelectedTabView Whether to draw the tab at the specified position + positionOffset
+   *     as selected.
+   *     <p>Note that calling the method with {@code updateSelectedTabView = true}
+   *     <em>does not</em> select a tab at the specified position, but only <em>draws it
+   *     as selected</em>. This can be useful for when the TabLayout behavior needs to be linked to
+   *     another view, such as {@link androidx.viewpager.widget.ViewPager}.
    * @see #setScrollPosition(int, float, boolean, boolean)
    */
-  public void setScrollPosition(int position, float positionOffset, boolean updateSelectedText) {
-    setScrollPosition(position, positionOffset, updateSelectedText, true);
+  public void setScrollPosition(int position, float positionOffset, boolean updateSelectedTabView) {
+    setScrollPosition(position, positionOffset, updateSelectedTabView, true);
   }
 
   /**
-   * Set the scroll position of the tabs. This is useful for when the tabs are being displayed as
-   * part of a scrolling container such as {@link androidx.viewpager.widget.ViewPager}.
+   * Set the scroll position of the {@link TabLayout}.
    *
-   * <p>Calling this method does not update the selected tab, it is only used for drawing purposes.
-   *
-   * @param position current scroll position
+   * @param position Position of the tab to scroll.
    * @param positionOffset Value from [0, 1) indicating the offset from {@code position}.
-   * @param updateSelectedText Whether to update the text's selected state.
-   * @param updateIndicatorPosition Whether to set the indicator to the given position and offset.
+   * @param updateSelectedTabView Whether to draw the tab at the specified position + positionOffset
+   *     as selected.
+   *     <p>Note that calling the method with {@code updateSelectedTabView = true}
+   *     <em>does not</em> select a tab at the specified position, but only <em>draws it
+   *     as selected</em>. This can be useful for when the TabLayout behavior needs to be linked to
+   *     another view, such as {@link androidx.viewpager.widget.ViewPager}.
+   * @param updateIndicatorPosition Whether to set the indicator to the specified position and
+   *     offset.
+   *     <p>Note that calling the method with {@code updateIndicatorPosition = true}
+   *     <em>does not</em> select a tab at the specified position, but only updates the indicator
+   *     position. This can be useful for when the TabLayout behavior needs to be linked to
+   *     another view, such as {@link androidx.viewpager.widget.ViewPager}.
    * @see #setScrollPosition(int, float, boolean)
    */
   public void setScrollPosition(
       int position,
       float positionOffset,
-      boolean updateSelectedText,
+      boolean updateSelectedTabView,
       boolean updateIndicatorPosition) {
+    setScrollPosition(
+        position,
+        positionOffset,
+        updateSelectedTabView,
+        updateIndicatorPosition,
+        /* alwaysScroll= */ true);
+  }
+
+  void setScrollPosition(
+      int position,
+      float positionOffset,
+      boolean updateSelectedTabView,
+      boolean updateIndicatorPosition,
+      boolean alwaysScroll) {
     final int roundedPosition = Math.round(position + positionOffset);
     if (roundedPosition < 0 || roundedPosition >= slidingTabIndicator.getChildCount()) {
       return;
@@ -706,10 +785,39 @@ public class TabLayout extends HorizontalScrollView {
     if (scrollAnimator != null && scrollAnimator.isRunning()) {
       scrollAnimator.cancel();
     }
-    scrollTo(position < 0 ? 0 : calculateScrollXForTab(position, positionOffset), 0);
+    int scrollXForPosition = calculateScrollXForTab(position, positionOffset);
+    int scrollX = getScrollX();
+    // If the position is smaller than the selected tab position, the position is getting larger
+    // to reach the selected tab position so scrollX is increasing.
+    // We only want to update the scroll position if the new scroll position is greater than
+    // the current scroll position.
+    // Conversely if the position is greater than the selected tab position, the position is
+    // getting smaller to reach the selected tab position so scrollX is decreasing.
+    // We only update the scroll position if the new scroll position is less than the current
+    // scroll position.
+    // Lastly if the position is equal to the selected position, we want to set the scroll
+    // position which also updates the selected tab view and the indicator.
+    boolean toMove =
+        (position < getSelectedTabPosition() && scrollXForPosition >= scrollX)
+            || (position > getSelectedTabPosition() && scrollXForPosition <= scrollX)
+            || (position == getSelectedTabPosition());
+    // If the layout direction is RTL, the scrollXForPosition and scrollX comparisons are
+    // reversed since scrollX values remain the same in RTL but tab positions go RTL.
+    if (getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+      toMove =
+          (position < getSelectedTabPosition() && scrollXForPosition <= scrollX)
+              || (position > getSelectedTabPosition()
+              && scrollXForPosition >= scrollX)
+              || (position == getSelectedTabPosition());
+    }
+    // We want to scroll if alwaysScroll is true, the viewpager is being dragged, or if we should
+    // scroll by the rules above.
+    if (toMove || viewPagerScrollState == SCROLL_STATE_DRAGGING || alwaysScroll) {
+      scrollTo(position < 0 ? 0 : scrollXForPosition, 0);
+    }
 
     // Update the 'selected state' view as we scroll, if enabled
-    if (updateSelectedText) {
+    if (updateSelectedTabView) {
       setSelectedTabView(roundedPosition);
     }
   }
@@ -920,7 +1028,7 @@ public class TabLayout extends HorizontalScrollView {
   }
 
   /**
-   * Returns the number of tabs currently registered with the action bar.
+   * Returns the number of tabs currently registered with the tab layout.
    *
    * @return Tab count
    */
@@ -974,16 +1082,24 @@ public class TabLayout extends HorizontalScrollView {
     }
 
     final int newTabCount = tabs.size();
+    int newIndicatorPosition = -1;
     for (int i = position; i < newTabCount; i++) {
+      // If the current tab position is the indicator position, mark its new position as the new
+      // indicator position.
+      if (tabs.get(i).getPosition() == indicatorPosition) {
+        newIndicatorPosition = i;
+      }
       tabs.get(i).setPosition(i);
     }
+    // Update the indicator position to the correct selected tab after refreshing tab positions.
+    indicatorPosition = newIndicatorPosition;
 
     if (selectedTabPosition == position) {
       selectTab(tabs.isEmpty() ? null : tabs.get(Math.max(0, position - 1)));
     }
   }
 
-  /** Remove all tabs from the action bar and deselect the current tab. */
+  /** Remove all tabs from the tab layout and deselect the current tab. */
   public void removeAllTabs() {
     // Remove all the views
     for (int i = slidingTabIndicator.getChildCount() - 1; i >= 0; i--) {
@@ -1008,7 +1124,7 @@ public class TabLayout extends HorizontalScrollView {
    *       content that benefits from quick pivots between tabs.
    *   <li>{@link #MODE_SCROLLABLE}: Scrollable tabs display a subset of tabs at any given moment,
    *       and can contain longer tab labels and a larger number of tabs. They are best used for
-   *       browsing contexts in touch interfaces when users don’t need to directly compare the tab
+   *       browsing contexts in touch interfaces when users don't need to directly compare the tab
    *       labels. This mode is commonly used with a {@link androidx.viewpager.widget.ViewPager}.
    * </ul>
    *
@@ -1061,7 +1177,7 @@ public class TabLayout extends HorizontalScrollView {
    * (preferred), via the {@code tabIndicatorHeight} attribute (deprecated), or via {@link
    * #setSelectedTabIndicatorHeight(int)} (deprecated). Otherwise, the indicator will not be shown
    * unless gravity is set to {@link #INDICATOR_GRAVITY_STRETCH}, in which case it will ignore
-   * indicator height and stretch across the entire height and width of the {@link TabLayout}. This
+   * indicator height and stretch across the entire height of the {@link TabLayout}. This
    * defaults to {@link #INDICATOR_GRAVITY_BOTTOM} if not set.
    *
    * @param indicatorGravity one of {@link #INDICATOR_GRAVITY_BOTTOM}, {@link
@@ -1072,7 +1188,7 @@ public class TabLayout extends HorizontalScrollView {
   public void setSelectedTabIndicatorGravity(@TabIndicatorGravity int indicatorGravity) {
     if (tabIndicatorGravity != indicatorGravity) {
       tabIndicatorGravity = indicatorGravity;
-      ViewCompat.postInvalidateOnAnimation(slidingTabIndicator);
+      slidingTabIndicator.postInvalidateOnAnimation();
     }
   }
 
@@ -1150,7 +1266,7 @@ public class TabLayout extends HorizontalScrollView {
   public void setTabIndicatorFullWidth(boolean tabIndicatorFullWidth) {
     this.tabIndicatorFullWidth = tabIndicatorFullWidth;
     slidingTabIndicator.jumpIndicatorToSelectedPosition();
-    ViewCompat.postInvalidateOnAnimation(slidingTabIndicator);
+    slidingTabIndicator.postInvalidateOnAnimation();
   }
 
   /**
@@ -1322,8 +1438,8 @@ public class TabLayout extends HorizontalScrollView {
   /**
    * Sets the ripple color for this TabLayout.
    *
-   * <p>When running on devices with KitKat or below, we draw this color as a filled overlay rather
-   * than a ripple.
+   * <p>When running on devices with KitKat, we draw this color as a filled overlay rather than a
+   * ripple.
    *
    * @param color color (or ColorStateList) to use for the ripple
    * @attr ref com.google.android.material.R.styleable#TabLayout_tabRippleColor
@@ -1344,8 +1460,8 @@ public class TabLayout extends HorizontalScrollView {
   /**
    * Sets the ripple color resource for this TabLayout.
    *
-   * <p>When running on devices with KitKat or below, we draw this color as a filled overlay rather
-   * than a ripple.
+   * <p>When running on devices with KitKat, we draw this color as a filled overlay rather than a
+   * ripple.
    *
    * @param tabRippleColorResourceId A color resource to use as ripple color.
    * @see #getTabRippleColor()
@@ -1511,6 +1627,10 @@ public class TabLayout extends HorizontalScrollView {
     setPagerAdapter(adapter, false);
   }
 
+  void updateViewPagerScrollState(int scrollState) {
+    this.viewPagerScrollState = scrollState;
+  }
+
   @Override
   public boolean shouldDelayChildPressedState() {
     // Only delay the pressed state if the tabs can scroll
@@ -1618,9 +1738,16 @@ public class TabLayout extends HorizontalScrollView {
     tabs.add(position, tab);
 
     final int count = tabs.size();
+    int newIndicatorPosition = -1;
     for (int i = position + 1; i < count; i++) {
+      // If the current tab position is the indicator position, mark its new position as the new
+      // indicator position.
+      if (tabs.get(i).getPosition() == indicatorPosition) {
+        newIndicatorPosition = i;
+      }
       tabs.get(i).setPosition(i);
     }
+    indicatorPosition = newIndicatorPosition;
   }
 
   private void addTabView(@NonNull Tab tab) {
@@ -1676,7 +1803,6 @@ public class TabLayout extends HorizontalScrollView {
     }
   }
 
-  @RequiresApi(VERSION_CODES.LOLLIPOP)
   @Override
   public void setElevation(float elevation) {
     super.setElevation(elevation);
@@ -1791,9 +1917,7 @@ public class TabLayout extends HorizontalScrollView {
       return;
     }
 
-    if (getWindowToken() == null
-        || !ViewCompat.isLaidOut(this)
-        || slidingTabIndicator.childrenNeedLayout()) {
+    if (getWindowToken() == null || !isLaidOut() || slidingTabIndicator.childrenNeedLayout()) {
       // If we don't have a window token, or we haven't been laid out yet just draw the new
       // position now
       setScrollPosition(newPosition, 0f, true);
@@ -1817,7 +1941,7 @@ public class TabLayout extends HorizontalScrollView {
   private void ensureScrollAnimator() {
     if (scrollAnimator == null) {
       scrollAnimator = new ValueAnimator();
-      scrollAnimator.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
+      scrollAnimator.setInterpolator(tabIndicatorTimeInterpolator);
       scrollAnimator.setDuration(tabIndicatorAnimationDuration);
       scrollAnimator.addUpdateListener(
           new ValueAnimator.AnimatorUpdateListener() {
@@ -1835,7 +1959,7 @@ public class TabLayout extends HorizontalScrollView {
   }
 
   /**
-   * Called when a selected tab is added. Unselects all other tabs in the TabLayout.
+   * Called when a tab is selected. Unselects all other tabs in the TabLayout.
    *
    * @param position Position of the selected tab.
    */
@@ -1844,6 +1968,16 @@ public class TabLayout extends HorizontalScrollView {
     if (position < tabCount) {
       for (int i = 0; i < tabCount; i++) {
         final View child = slidingTabIndicator.getChildAt(i);
+        // Update the tab view if it needs to be updated (eg. it's newly selected and it is not
+        // yet selected, or it is selected and something else was selected).
+        if ((i == position && !child.isSelected()) || (i != position && child.isSelected())) {
+          child.setSelected(i == position);
+          child.setActivated(i == position);
+          if (child instanceof TabView) {
+            ((TabView) child).updateTab();
+          }
+          continue;
+        }
         child.setSelected(i == position);
         child.setActivated(i == position);
       }
@@ -1865,7 +1999,7 @@ public class TabLayout extends HorizontalScrollView {
    * reselected, regardless of the value of {@code updateIndicator}.
    *
    * @param tab The tab to select, or {@code null} to select none.
-   * @param updateIndicator Whether to animate to the selected tab.
+   * @param updateIndicator Whether to update the indicator.
    * @see #selectTab(Tab)
    */
   public void selectTab(@Nullable final Tab tab, boolean updateIndicator) {
@@ -1893,7 +2027,8 @@ public class TabLayout extends HorizontalScrollView {
       // Setting selectedTab before dispatching 'tab unselected' events, so that currentTab's state
       // will be interpreted as unselected
       selectedTab = tab;
-      if (currentTab != null) {
+      // If the current tab is still attached to the TabLayout.
+      if (currentTab != null && currentTab.parent != null) {
         dispatchTabUnselected(currentTab);
       }
       if (tab != null) {
@@ -1938,7 +2073,7 @@ public class TabLayout extends HorizontalScrollView {
       // offset amount: fraction of the distance between centers of tabs
       int scrollOffset = (int) ((selectedWidth + nextWidth) * 0.5f * positionOffset);
 
-      return (ViewCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_LTR)
+      return (getLayoutDirection() == View.LAYOUT_DIRECTION_LTR)
           ? scrollBase + scrollOffset
           : scrollBase - scrollOffset;
     }
@@ -1951,7 +2086,7 @@ public class TabLayout extends HorizontalScrollView {
       // If we're scrollable, or fixed at start, inset using padding
       paddingStart = Math.max(0, contentInsetStart - tabPaddingStart);
     }
-    ViewCompat.setPaddingRelative(slidingTabIndicator, paddingStart, 0, 0, 0);
+    slidingTabIndicator.setPaddingRelative(paddingStart, 0, 0, 0);
 
     switch (mode) {
       case MODE_AUTO:
@@ -1984,7 +2119,7 @@ public class TabLayout extends HorizontalScrollView {
                 + " instead");
         // Fall through
       case GRAVITY_START:
-        slidingTabIndicator.setGravity(GravityCompat.START);
+        slidingTabIndicator.setGravity(Gravity.START);
         break;
       default:
         break;
@@ -2048,6 +2183,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setTag(@Nullable Object tag) {
       this.tag = tag;
       return this;
@@ -2058,9 +2194,10 @@ public class TabLayout extends HorizontalScrollView {
      *
      * <p>Do not rely on this if using {@link TabLayout#setupWithViewPager(ViewPager)}
      *
-     * @param id, unique id for this tab
+     * @param id unique id for this tab
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setId(int id) {
       this.id = id;
       if (view != null) {
@@ -2097,6 +2234,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setCustomView(@Nullable View view) {
       customView = view;
       updateView();
@@ -2116,6 +2254,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setCustomView(@LayoutRes int resId) {
       final LayoutInflater inflater = LayoutInflater.from(view.getContext());
       return setCustomView(inflater.inflate(resId, view, false));
@@ -2132,10 +2271,10 @@ public class TabLayout extends HorizontalScrollView {
     }
 
     /**
-     * Return the current position of this tab in the action bar.
+     * Return the current position of this tab in the tab layout.
      *
      * @return Current position, or {@link #INVALID_POSITION} if this tab is not currently in the
-     *     action bar.
+     *     tab layout.
      */
     public int getPosition() {
       return position;
@@ -2162,18 +2301,13 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setIcon(@Nullable Drawable icon) {
       this.icon = icon;
       if ((parent.tabGravity == GRAVITY_CENTER) || parent.mode == MODE_AUTO) {
         parent.updateTabViews(true);
       }
       updateView();
-      if (BadgeUtils.USE_COMPAT_PARENT
-          && view.hasBadgeDrawable()
-          && view.badgeDrawable.isVisible()) {
-        // Invalidate the TabView if icon visibility has changed and a badge is displayed.
-        view.invalidate();
-      }
       return this;
     }
 
@@ -2184,6 +2318,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setIcon(@DrawableRes int resId) {
       if (parent == null) {
         throw new IllegalArgumentException("Tab not attached to a TabLayout");
@@ -2199,6 +2334,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setText(@Nullable CharSequence text) {
       if (TextUtils.isEmpty(contentDesc) && !TextUtils.isEmpty(text)) {
         // If no content description has been set, use the text as the content description of the
@@ -2219,6 +2355,7 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setText(@StringRes int resId) {
       if (parent == null) {
         throw new IllegalArgumentException("Tab not attached to a TabLayout");
@@ -2268,18 +2405,13 @@ public class TabLayout extends HorizontalScrollView {
      * @return The current instance for call chaining.
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setTabLabelVisibility(@LabelVisibility int mode) {
       this.labelVisibilityMode = mode;
       if ((parent.tabGravity == GRAVITY_CENTER) || parent.mode == MODE_AUTO) {
         parent.updateTabViews(true);
       }
       this.updateView();
-      if (BadgeUtils.USE_COMPAT_PARENT
-          && view.hasBadgeDrawable()
-          && view.badgeDrawable.isVisible()) {
-        // Invalidate the TabView if label visibility has changed and a badge is displayed.
-        view.invalidate();
-      }
       return this;
     }
 
@@ -2295,7 +2427,7 @@ public class TabLayout extends HorizontalScrollView {
       return this.labelVisibilityMode;
     }
 
-    /** Select this tab. Only valid if the tab has been added to the action bar. */
+    /** Select this tab. Only valid if the tab has been added to the tab layout. */
     public void select() {
       if (parent == null) {
         throw new IllegalArgumentException("Tab not attached to a TabLayout");
@@ -2322,6 +2454,7 @@ public class TabLayout extends HorizontalScrollView {
      * @see #getContentDescription()
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setContentDescription(@StringRes int resId) {
       if (parent == null) {
         throw new IllegalArgumentException("Tab not attached to a TabLayout");
@@ -2339,6 +2472,7 @@ public class TabLayout extends HorizontalScrollView {
      * @see #getContentDescription()
      */
     @NonNull
+    @CanIgnoreReturnValue
     public Tab setContentDescription(@Nullable CharSequence contentDesc) {
       this.contentDesc = contentDesc;
       updateView();
@@ -2396,8 +2530,7 @@ public class TabLayout extends HorizontalScrollView {
     public TabView(@NonNull Context context) {
       super(context);
       updateBackgroundDrawable(context);
-      ViewCompat.setPaddingRelative(
-          this, tabPaddingStart, tabPaddingTop, tabPaddingEnd, tabPaddingBottom);
+      setPaddingRelative(tabPaddingStart, tabPaddingTop, tabPaddingEnd, tabPaddingBottom);
       setGravity(Gravity.CENTER);
       setOrientation(inlineLabel ? HORIZONTAL : VERTICAL);
       setClickable(true);
@@ -2432,21 +2565,15 @@ public class TabLayout extends HorizontalScrollView {
 
         // TODO: Add support to RippleUtils.compositeRippleColorStateList for different ripple color
         // for selected items vs non-selected items
-        if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-          background =
-              new RippleDrawable(
-                  rippleColor,
-                  unboundedRipple ? null : contentDrawable,
-                  unboundedRipple ? null : maskDrawable);
-        } else {
-          Drawable rippleDrawable = DrawableCompat.wrap(maskDrawable);
-          DrawableCompat.setTintList(rippleDrawable, rippleColor);
-          background = new LayerDrawable(new Drawable[] {contentDrawable, rippleDrawable});
-        }
+        background =
+            new RippleDrawable(
+                rippleColor,
+                unboundedRipple ? null : contentDrawable,
+                unboundedRipple ? null : maskDrawable);
       } else {
         background = contentDrawable;
       }
-      ViewCompat.setBackground(this, background);
+      setBackground(background);
       TabLayout.this.invalidate();
     }
 
@@ -2503,11 +2630,6 @@ public class TabLayout extends HorizontalScrollView {
 
       super.setSelected(selected);
 
-      if (changed && selected && Build.VERSION.SDK_INT < 16) {
-        // Pre-JB we need to manually send the TYPE_VIEW_SELECTED event
-        sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_SELECTED);
-      }
-
       // Always dispatch this to the child views, regardless of whether the value has
       // changed
       if (textView != null) {
@@ -2524,12 +2646,10 @@ public class TabLayout extends HorizontalScrollView {
     @Override
     public void onInitializeAccessibilityNodeInfo(@NonNull AccessibilityNodeInfo info) {
       super.onInitializeAccessibilityNodeInfo(info);
-      if (badgeDrawable != null && badgeDrawable.isVisible()) {
-        CharSequence customContentDescription = getContentDescription();
-        info.setContentDescription(
-            customContentDescription + ", " + badgeDrawable.getContentDescription());
-      }
       AccessibilityNodeInfoCompat infoCompat = AccessibilityNodeInfoCompat.wrap(info);
+      if (badgeDrawable != null && badgeDrawable.isVisible()) {
+        infoCompat.setContentDescription(badgeDrawable.getContentDescription());
+      }
       infoCompat.setCollectionItemInfo(
           CollectionItemInfoCompat.obtain(
               /* rowIndex= */ 0,
@@ -2569,6 +2689,9 @@ public class TabLayout extends HorizontalScrollView {
       // We need to switch the text size based on whether the text is spanning 2 lines or not
       if (textView != null) {
         float textSize = tabTextSize;
+        if (isSelected() && selectedTabTextAppearance != -1) {
+          textSize = selectedTabTextSize;
+        }
         int maxLines = defaultMaxLines;
 
         if (iconView != null && iconView.getVisibility() == VISIBLE) {
@@ -2581,7 +2704,7 @@ public class TabLayout extends HorizontalScrollView {
 
         final float curTextSize = textView.getTextSize();
         final int curLineCount = textView.getLineCount();
-        final int curMaxLines = TextViewCompat.getMaxLines(textView);
+        final int curMaxLines = textView.getMaxLines();
 
         if (textSize != curTextSize || (curMaxLines >= 0 && maxLines != curMaxLines)) {
           // We've got a new text size and/or max lines...
@@ -2622,7 +2745,7 @@ public class TabLayout extends HorizontalScrollView {
       setSelected(false);
     }
 
-    final void update() {
+    final void updateTab() {
       final Tab tab = this.tab;
       final View custom = tab != null ? tab.getCustomView() : null;
       if (custom != null) {
@@ -2630,6 +2753,12 @@ public class TabLayout extends HorizontalScrollView {
         if (customParent != this) {
           if (customParent != null) {
             ((ViewGroup) customParent).removeView(custom);
+          }
+          if (customView != null) {
+            final ViewParent customViewParent = customView.getParent();
+            if (customViewParent != null) {
+              ((ViewGroup) customViewParent).removeView(customView);
+            }
           }
           addView(custom);
         }
@@ -2644,7 +2773,7 @@ public class TabLayout extends HorizontalScrollView {
 
         customTextView = custom.findViewById(android.R.id.text1);
         if (customTextView != null) {
-          defaultMaxLines = TextViewCompat.getMaxLines(customTextView);
+          defaultMaxLines = customTextView.getMaxLines();
         }
         customIconView = custom.findViewById(android.R.id.icon);
       } else {
@@ -2664,13 +2793,18 @@ public class TabLayout extends HorizontalScrollView {
         }
         if (this.textView == null) {
           inflateAndAddDefaultTextView();
-          defaultMaxLines = TextViewCompat.getMaxLines(this.textView);
+          defaultMaxLines = this.textView.getMaxLines();
         }
-        TextViewCompat.setTextAppearance(this.textView, tabTextAppearance);
+        TextViewCompat.setTextAppearance(this.textView, defaultTabTextAppearance);
+        if (isSelected() && selectedTabTextAppearance != -1) {
+          TextViewCompat.setTextAppearance(this.textView, selectedTabTextAppearance);
+        } else {
+          TextViewCompat.setTextAppearance(this.textView, tabTextAppearance);
+        }
         if (tabTextColors != null) {
           this.textView.setTextColor(tabTextColors);
         }
-        updateTextAndIcon(this.textView, this.iconView);
+        updateTextAndIcon(this.textView, this.iconView, /* addDefaultMargins= */ true);
 
         tryUpdateBadgeAnchor();
         addOnLayoutChangeListener(iconView);
@@ -2678,7 +2812,7 @@ public class TabLayout extends HorizontalScrollView {
       } else {
         // Else, we'll see if there is a TextView or ImageView present and update them
         if (customTextView != null || customIconView != null) {
-          updateTextAndIcon(customTextView, customIconView);
+          updateTextAndIcon(customTextView, customIconView, /* addDefaultMargins= */ false);
         }
       }
 
@@ -2687,44 +2821,28 @@ public class TabLayout extends HorizontalScrollView {
         // has been explicitly set.
         setContentDescription(tab.contentDesc);
       }
+    }
+
+    final void update() {
+      updateTab();
       // Finally update our selected state
-      setSelected(tab != null && tab.isSelected());
+      setSelected(this.tab != null && this.tab.isSelected());
     }
 
     private void inflateAndAddDefaultIconView() {
-      ViewGroup iconViewParent = this;
-      if (BadgeUtils.USE_COMPAT_PARENT) {
-        iconViewParent = createPreApi18BadgeAnchorRoot();
-        addView(iconViewParent, 0);
-      }
       this.iconView =
           (ImageView)
               LayoutInflater.from(getContext())
-                  .inflate(R.layout.design_layout_tab_icon, iconViewParent, false);
-      iconViewParent.addView(iconView, 0);
+                  .inflate(R.layout.design_layout_tab_icon, this, false);
+      addView(iconView, 0);
     }
 
     private void inflateAndAddDefaultTextView() {
-      ViewGroup textViewParent = this;
-      if (BadgeUtils.USE_COMPAT_PARENT) {
-        textViewParent = createPreApi18BadgeAnchorRoot();
-        addView(textViewParent);
-      }
       this.textView =
           (TextView)
               LayoutInflater.from(getContext())
-                  .inflate(R.layout.design_layout_tab_text, textViewParent, false);
-      textViewParent.addView(textView);
-    }
-
-    @NonNull
-    private FrameLayout createPreApi18BadgeAnchorRoot() {
-      FrameLayout frameLayout = new FrameLayout(getContext());
-      FrameLayout.LayoutParams layoutparams =
-          new FrameLayout.LayoutParams(
-              ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-      frameLayout.setLayoutParams(layoutparams);
-      return frameLayout;
+                  .inflate(R.layout.design_layout_tab_text, this, false);
+      addView(textView);
     }
 
     /**
@@ -2820,8 +2938,7 @@ public class TabLayout extends HorizontalScrollView {
       }
       if (anchorView != null) {
         clipViewToPaddingForBadge(false);
-        BadgeUtils.attachBadgeDrawable(
-            badgeDrawable, anchorView, getCustomParentForBadge(anchorView));
+        BadgeUtils.attachBadgeDrawable(badgeDrawable, anchorView, null);
         badgeAnchorView = anchorView;
       }
     }
@@ -2852,22 +2969,24 @@ public class TabLayout extends HorizontalScrollView {
     final void updateOrientation() {
       setOrientation(inlineLabel ? HORIZONTAL : VERTICAL);
       if (customTextView != null || customIconView != null) {
-        updateTextAndIcon(customTextView, customIconView);
+        updateTextAndIcon(customTextView, customIconView, /* addDefaultMargins= */ false);
       } else {
-        updateTextAndIcon(textView, iconView);
+        updateTextAndIcon(textView, iconView, /* addDefaultMargins= */ true);
       }
     }
 
     private void updateTextAndIcon(
-        @Nullable final TextView textView, @Nullable final ImageView iconView) {
+        @Nullable final TextView textView,
+        @Nullable final ImageView iconView,
+        final boolean addDefaultMargins) {
       final Drawable icon =
           (tab != null && tab.getIcon() != null)
               ? DrawableCompat.wrap(tab.getIcon()).mutate()
               : null;
       if (icon != null) {
-        DrawableCompat.setTintList(icon, tabIconTint);
+        icon.setTintList(tabIconTint);
         if (tabIconTintMode != null) {
-          DrawableCompat.setTintMode(icon, tabIconTintMode);
+          icon.setTintMode(tabIconTintMode);
         }
       }
 
@@ -2885,31 +3004,29 @@ public class TabLayout extends HorizontalScrollView {
       }
 
       final boolean hasText = !TextUtils.isEmpty(text);
+      final boolean showingText;
       if (textView != null) {
+        showingText = hasText && tab.labelVisibilityMode == TAB_LABEL_VISIBILITY_LABELED;
+        textView.setText(hasText ? text : null);
+        textView.setVisibility(showingText ? VISIBLE : GONE);
+
         if (hasText) {
-          textView.setText(text);
-          if (tab.labelVisibilityMode == TAB_LABEL_VISIBILITY_LABELED) {
-            textView.setVisibility(VISIBLE);
-          } else {
-            textView.setVisibility(GONE);
-          }
           setVisibility(VISIBLE);
-        } else {
-          textView.setVisibility(GONE);
-          textView.setText(null);
         }
+      } else {
+        showingText = false;
       }
 
-      if (iconView != null) {
+      if (addDefaultMargins && iconView != null) {
         MarginLayoutParams lp = ((MarginLayoutParams) iconView.getLayoutParams());
         int iconMargin = 0;
-        if (hasText && iconView.getVisibility() == VISIBLE) {
-          // If we're showing both text and icon, add some margin bottom to the icon
+        if (showingText && iconView.getVisibility() == VISIBLE) {
+          // If we're showing both text and icon, add some margin to the icon
           iconMargin = (int) ViewUtils.dpToPx(getContext(), DEFAULT_GAP_TEXT_ICON);
         }
         if (inlineLabel) {
-          if (iconMargin != MarginLayoutParamsCompat.getMarginEnd(lp)) {
-            MarginLayoutParamsCompat.setMarginEnd(lp, iconMargin);
+          if (iconMargin != lp.getMarginEnd()) {
+            lp.setMarginEnd(iconMargin);
             lp.bottomMargin = 0;
             // Calls resolveLayoutParams(), necessary for layout direction
             iconView.setLayoutParams(lp);
@@ -2918,7 +3035,7 @@ public class TabLayout extends HorizontalScrollView {
         } else {
           if (iconMargin != lp.bottomMargin) {
             lp.bottomMargin = iconMargin;
-            MarginLayoutParamsCompat.setMarginEnd(lp, 0);
+            lp.setMarginEnd(0);
             // Calls resolveLayoutParams(), necessary for layout direction
             iconView.setLayoutParams(lp);
             iconView.requestLayout();
@@ -2928,7 +3045,7 @@ public class TabLayout extends HorizontalScrollView {
 
       final CharSequence contentDesc = tab != null ? tab.contentDesc : null;
       // Avoid calling tooltip for L and M devices because long pressing twice may freeze devices.
-      if (VERSION.SDK_INT < VERSION_CODES.LOLLIPOP || VERSION.SDK_INT > VERSION_CODES.M) {
+      if (VERSION.SDK_INT > VERSION_CODES.M) {
         TooltipCompat.setTooltipText(this, hasText ? text : contentDesc);
       }
     }
@@ -2936,20 +3053,12 @@ public class TabLayout extends HorizontalScrollView {
     private void tryUpdateBadgeDrawableBounds(@NonNull View anchor) {
       // Check that this view is the badge's current anchor view.
       if (hasBadgeDrawable() && anchor == badgeAnchorView) {
-        BadgeUtils.setBadgeDrawableBounds(badgeDrawable, anchor, getCustomParentForBadge(anchor));
+        BadgeUtils.setBadgeDrawableBounds(badgeDrawable, anchor, null);
       }
     }
 
     private boolean hasBadgeDrawable() {
       return badgeDrawable != null;
-    }
-
-    @Nullable
-    private FrameLayout getCustomParentForBadge(@NonNull View anchor) {
-      if (anchor != iconView && anchor != textView) {
-        return null;
-      }
-      return BadgeUtils.USE_COMPAT_PARENT ? ((FrameLayout) anchor.getParent()) : null;
     }
 
     /**
@@ -3041,6 +3150,9 @@ public class TabLayout extends HorizontalScrollView {
      * @param positionOffset Value from [0, 1) indicating the offset from the tab at position.
      */
     void setIndicatorPositionFromTabPosition(int position, float positionOffset) {
+      // Since we are tweening the indicator in between the position and position+positionOffset,
+      // we set the indicator position to whichever is closer.
+      indicatorPosition = Math.round(position + positionOffset);
       if (indicatorAnimator != null && indicatorAnimator.isRunning()) {
         indicatorAnimator.cancel();
       }
@@ -3140,15 +3252,40 @@ public class TabLayout extends HorizontalScrollView {
             /* recreateAnimation= */ false, getSelectedTabPosition(), /* duration= */ -1);
       } else {
         // If we've been laid out, update the indicator position
-        jumpIndicatorToSelectedPosition();
+        jumpIndicatorToIndicatorPosition();
       }
+    }
+
+    /**
+     * Immediately update the indicator position to the specified position, unless we are mid-scroll
+     * in a viewpager.
+     */
+    private void jumpIndicatorToPosition(int position) {
+      // Don't update the indicator position if the scroll state is not idle, and the indicator
+      // is drawn.
+      if (viewPagerScrollState != SCROLL_STATE_IDLE
+          && !(getTabSelectedIndicator().getBounds().left == -1
+              && getTabSelectedIndicator().getBounds().right == -1)) {
+        return;
+      }
+      final View currentView = getChildAt(position);
+      tabIndicatorInterpolator.setIndicatorBoundsForTab(
+          TabLayout.this, currentView, tabSelectedIndicator);
+      indicatorPosition = position;
     }
 
     /** Immediately update the indicator position to the currently selected position. */
     private void jumpIndicatorToSelectedPosition() {
-      final View currentView = getChildAt(getSelectedTabPosition());
-      tabIndicatorInterpolator.setIndicatorBoundsForTab(
-          TabLayout.this, currentView, tabSelectedIndicator);
+      jumpIndicatorToPosition(getSelectedTabPosition());
+    }
+
+    /** Immediately update the indicator position to the current indicator position. */
+    private void jumpIndicatorToIndicatorPosition() {
+      // If indicator position has not yet been set, set indicator to the selected tab position.
+      if (indicatorPosition == -1) {
+        indicatorPosition = getSelectedTabPosition();
+      }
+      jumpIndicatorToPosition(indicatorPosition);
     }
 
     /**
@@ -3177,7 +3314,7 @@ public class TabLayout extends HorizontalScrollView {
             -1, tabSelectedIndicator.getBounds().top, -1, tabSelectedIndicator.getBounds().bottom);
       }
 
-      ViewCompat.postInvalidateOnAnimation(this);
+      postInvalidateOnAnimation();
     }
 
     /**
@@ -3190,7 +3327,9 @@ public class TabLayout extends HorizontalScrollView {
      * @param duration The duration over which the animation should take place.
      */
     void animateIndicatorToPosition(final int position, int duration) {
-      if (indicatorAnimator != null && indicatorAnimator.isRunning()) {
+      if (indicatorAnimator != null
+          && indicatorAnimator.isRunning()
+          && indicatorPosition != position) {
         indicatorAnimator.cancel();
       }
 
@@ -3207,6 +3346,11 @@ public class TabLayout extends HorizontalScrollView {
      */
     private void updateOrRecreateIndicatorAnimation(
         boolean recreateAnimation, final int position, int duration) {
+      // If the indicator position is already the target position, we don't need to update the
+      // indicator animation because nothing has changed.
+      if (indicatorPosition == position) {
+        return;
+      }
       final View currentView = getChildAt(getSelectedTabPosition());
       final View targetView = getChildAt(position);
       if (targetView == null) {
@@ -3214,6 +3358,7 @@ public class TabLayout extends HorizontalScrollView {
         jumpIndicatorToSelectedPosition();
         return;
       }
+      indicatorPosition = position;
 
       // Create the update listener with the new target indicator positions. If we're not recreating
       // then animationStartLeft/Right will be the same as when the previous animator was created.
@@ -3228,7 +3373,7 @@ public class TabLayout extends HorizontalScrollView {
       if (recreateAnimation) {
         // Create & start a new indicatorAnimator.
         ValueAnimator animator = indicatorAnimator = new ValueAnimator();
-        animator.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
+        animator.setInterpolator(tabIndicatorTimeInterpolator);
         animator.setDuration(duration);
         animator.setFloatValues(0F, 1F);
         animator.addUpdateListener(updateListener);
@@ -3361,6 +3506,10 @@ public class TabLayout extends HorizontalScrollView {
     public void onPageScrollStateChanged(final int state) {
       previousScrollState = scrollState;
       scrollState = state;
+      TabLayout tabLayout = tabLayoutRef.get();
+      if (tabLayout != null) {
+        tabLayout.updateViewPagerScrollState(scrollState);
+      }
     }
 
     @Override
@@ -3368,16 +3517,17 @@ public class TabLayout extends HorizontalScrollView {
         final int position, final float positionOffset, final int positionOffsetPixels) {
       final TabLayout tabLayout = tabLayoutRef.get();
       if (tabLayout != null) {
-        // Only update the text selection if we're not settling, or we are settling after
+        // Only update the tab view selection if we're not settling, or we are settling after
         // being dragged
-        final boolean updateText =
+        final boolean updateSelectedTabView =
             scrollState != SCROLL_STATE_SETTLING || previousScrollState == SCROLL_STATE_DRAGGING;
         // Update the indicator if we're not settling after being idle. This is caused
         // from a setCurrentItem() call and will be handled by an animation from
         // onPageSelected() instead.
         final boolean updateIndicator =
             !(scrollState == SCROLL_STATE_SETTLING && previousScrollState == SCROLL_STATE_IDLE);
-        tabLayout.setScrollPosition(position, positionOffset, updateText, updateIndicator);
+        tabLayout.setScrollPosition(
+            position, positionOffset, updateSelectedTabView, updateIndicator, false);
       }
     }
 

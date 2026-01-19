@@ -64,10 +64,10 @@ public class ColorHarmonizationDemoActivity extends DemoActivity {
             R.id.cat_colors_error,
             R.id.cat_colors_harmonized_error,
             new int[] {
-              R.attr.colorError,
-              R.attr.colorOnError,
-              R.attr.colorErrorContainer,
-              R.attr.colorOnErrorContainer
+              androidx.appcompat.R.attr.colorError,
+              com.google.android.material.R.attr.colorOnError,
+              com.google.android.material.R.attr.colorErrorContainer,
+              com.google.android.material.R.attr.colorOnErrorContainer
             },
             R.array.cat_error_strings),
         new ColorHarmonizationGridRowData(
@@ -148,7 +148,7 @@ public class ColorHarmonizationDemoActivity extends DemoActivity {
       @IdRes int layoutId) {
     ColorGrid colorGrid = createColorGrid(context, colorHarmonizationGridRowData);
     LinearLayout layout = demoView.findViewById(layoutId);
-    layout.addView(colorGrid.renderView(context, layout));
+    layout.addView(colorGrid.renderView(getLayoutInflater(), layout));
   }
 
   private ColorGrid createColorGrid(

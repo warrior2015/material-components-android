@@ -23,8 +23,6 @@ import android.graphics.LinearGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewParent;
@@ -39,12 +37,12 @@ import androidx.transition.PathMotion;
 import androidx.transition.PatternPathMotion;
 import androidx.transition.Transition;
 import androidx.transition.TransitionSet;
+import com.google.android.material.canvas.CanvasCompat.CanvasOperation;
 import com.google.android.material.motion.MotionUtils;
 import com.google.android.material.shape.AbsoluteCornerSize;
 import com.google.android.material.shape.CornerSize;
 import com.google.android.material.shape.RelativeCornerSize;
 import com.google.android.material.shape.ShapeAppearanceModel;
-import com.google.android.material.shape.ShapeAppearanceModel.CornerSizeUnaryOperator;
 
 class TransitionUtils {
 
@@ -123,15 +121,7 @@ class TransitionUtils {
   static ShapeAppearanceModel convertToRelativeCornerSizes(
       ShapeAppearanceModel shapeAppearanceModel, final RectF bounds) {
     return shapeAppearanceModel.withTransformedCornerSizes(
-        new CornerSizeUnaryOperator() {
-          @NonNull
-          @Override
-          public CornerSize apply(@NonNull CornerSize cornerSize) {
-            return cornerSize instanceof RelativeCornerSize
-                ? cornerSize
-                : new RelativeCornerSize(cornerSize.getCornerSize(bounds) / bounds.height());
-          }
-        });
+        cornerSize -> RelativeCornerSize.createFromCornerSize(bounds, cornerSize));
   }
 
   // TODO: rethink how to interpolate more than just corner size
@@ -303,9 +293,9 @@ class TransitionUtils {
     return new Rect(view.getLeft(), view.getTop(), view.getRight(), view.getBottom());
   }
 
-  static RectF getLocationOnScreen(View view) {
+  static RectF getLocationInWindow(View view) {
     int[] location = new int[2];
-    view.getLocationOnScreen(location);
+    view.getLocationInWindow(location);
     int left = location[0];
     int top = location[1];
     int right = left + view.getWidth();
@@ -326,17 +316,7 @@ class TransitionUtils {
 
   private static int saveLayerAlphaCompat(Canvas canvas, Rect bounds, int alpha) {
     transformAlphaRectF.set(bounds);
-    if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-      return canvas.saveLayerAlpha(transformAlphaRectF, alpha);
-    } else {
-      return canvas.saveLayerAlpha(
-          transformAlphaRectF.left,
-          transformAlphaRectF.top,
-          transformAlphaRectF.right,
-          transformAlphaRectF.bottom,
-          alpha,
-          Canvas.ALL_SAVE_FLAG);
-    }
+    return canvas.saveLayerAlpha(transformAlphaRectF, alpha);
   }
 
   /**
@@ -358,10 +338,6 @@ class TransitionUtils {
     }
     op.run(canvas);
     canvas.restoreToCount(checkpoint);
-  }
-
-  interface CanvasOperation {
-    void run(Canvas canvas);
   }
 
   static void maybeAddTransition(TransitionSet transitionSet, @Nullable Transition transition) {

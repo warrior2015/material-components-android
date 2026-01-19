@@ -53,6 +53,7 @@
   <public name="errorTextAppearance" type="attr"/>
   <public name="errorTextColor" type="attr"/>
   <public name="errorContentDescription" type="attr"/>
+  <public name="errorAccessibilityLiveRegion" type="attr"/>
   <public name="errorIconDrawable" type="attr"/>
   <public name="errorIconTint" type="attr"/>
   <public name="errorIconTintMode" type="attr"/>
@@ -65,11 +66,14 @@
   <public name="hintEnabled" type="attr"/>
   <public name="hintTextAppearance" type="attr"/>
   <public name="hintTextColor" type="attr"/>
+  <public name="hintMaxLines" type="attr"/>
   <public name="startIconDrawable" type="attr"/>
   <public name="startIconContentDescription" type="attr"/>
   <public name="startIconCheckable" type="attr"/>
   <public name="startIconTint" type="attr"/>
   <public name="startIconTintMode" type="attr"/>
+  <public name="startIconMinSize" type="attr"/>
+  <public name="startIconScaleType" type="attr" />
   <public name="placeholderText" type="attr"/>
   <public name="placeholderTextAppearance" type="attr"/>
   <public name="placeholderTextColor" type="attr"/>
@@ -79,6 +83,10 @@
   <public name="endIconCheckable" type="attr"/>
   <public name="endIconTint" type="attr"/>
   <public name="endIconTintMode" type="attr"/>
+  <public name="endIconMinSize" type="attr"/>
+  <public name="endIconScaleType" type="attr" />
+  <public name="cursorColor" type="attr"/>
+  <public name="cursorErrorColor" type="attr"/>
   <!-- Deprecated. Use endIconMode instead. -->
   <public name="passwordToggleEnabled" type="attr"/>
   <!--Deprecated. Use endIconDrawable instead. -->
@@ -95,6 +103,7 @@
   <public name="simpleItems" type="attr"/>
   <public name="simpleItemSelectedColor" type="attr"/>
   <public name="simpleItemSelectedRippleColor" type="attr"/>
+  <public name="dropDownBackgroundTint" type="attr"/>
 
   <public name="Widget.Design.TextInputLayout" type="style"/>
   <public name="Widget.MaterialComponents.TextInputLayout.FilledBox" type="style"/>

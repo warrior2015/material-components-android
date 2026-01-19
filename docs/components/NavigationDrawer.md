@@ -1,5 +1,5 @@
 <!--docs:
-title: "Navigation drawers"
+title: "Navigation drawer"
 layout: detail
 section: components
 excerpt: "Navigation drawers provide access to destinations in your app."
@@ -7,260 +7,61 @@ iconId: navigation-drawer
 path: /catalog/navigation-drawer/
 -->
 
-# Navigation drawer
+# Navigation drawers
 
-[Navigation drawers](https://material.io/components/navigation-drawer) provide
-access to destinations in your app.
+**Note:** The navigation drawer is being deprecated in the Material 3 expressive
+update. For those who have updated, use an [expanded navigation rail](https://m3.material.io/components/navigation-rail/overview), which has
+mostly the same functionality of the navigation drawer and adapts better across
+window size classes.
 
-![A standard (left) and modal (right) Navigation drawer](assets/navigationdrawer/navigation-drawer-hero.png)
+[Navigation drawers](https://m3.material.io/components/navigation-drawer/overview)
+provide access to destinations in your app. There are two variants of navigation
+drawers.
 
-**Contents**
+<img src="assets/navigationdrawer/navigation-drawer-overview.png" alt="A standard (left) and modal (right) navigation drawer" height="450">
 
-*   [Using navigation drawers](#using-navigation-drawers)
-*   [Anatomy](#anatomy)
-*   [Standard navigation drawer](#standard-navigation-drawer)
-*   [Modal navigation drawer](#modal-navigation-drawer)
-*   [Bottom navigation drawer](#bottom-navigation-drawer)
-*   [Theming](#theming)
+1.  Standard navigation drawer
+2.  Modal navigation drawer
 
-## Using navigation drawers
+**Note:** Images use various dynamic color schemes.
 
-Before you can use navigation drawers, you need to add a dependency to the
-Material Components for Android library. For more information, go to the
-[getting started](https://github.com/material-components/material-components-android/tree/master/docs/getting-started.md)
-page. For modal navigation drawers you also need to add a dependency to the
-AndroidX `DrawerLayout` library. For more information go to the
-[releases](https://developer.android.com/jetpack/androidx/releases/drawerlayout)
-page.
+## Design & API documentation
 
-The content of all navigation drawer types can be implemented using a
-`NavigationView`.
-
-```xml
-<com.google.android.material.navigation.NavigationView
-  android:id="@+id/navigationView"
-  ... />
-```
-
-**Note:** The `layout_width` and `layout_height` attributes should be set to
-`wrap_content`, `match_parent`, or a custom dimension depending on the
-navigation drawer type and parent `ViewGroup`.
-
-### Adding a menu
-
-![Nav drawer with 3 menu items](assets/navigationdrawer/navigation-drawer-basic.png)
-
-In the layout:
-
-```xml
-<com.google.android.material.navigation.NavigationView
-    ...
-    app:menu="@menu/navigation_drawer" />
-```
-
-In `res/menu/navigation_drawer.xml`:
-
-```xml
-<menu ...>
-
-  <item
-    android:id="@+id/main_item"
-    android:title="@string/mail_subheader_title">
-      <menu>
-        <item
-          android:id="@+id/inbox_item"
-          android:icon="@drawable/ic_inbox_24px"
-          android:title="@string/inbox_title"
-          android:checkable="true"/>
-        <item
-          android:id="@+id/outbox_item"
-          android:icon="@drawable/ic_outbox_24px"
-          android:title="@string/outbox_title"
-          android:checkable="true"/>
-        <item
-          android:id="@+id/favourites_item"
-          android:icon="@drawable/ic_favourites_24px"
-          android:title="@string/favourites_title"
-          android:checkable="true">
-      </menu>
-  </item>
-
-</menu>
-```
-
-### Adding a header
-
-![Nav drawer with "Header title", "Header text", a "Mail" subheader, and 3
-items. Item 1 is
-selected.](assets/navigationdrawer/navigation-drawer-header.png)
-
-In the layout:
-
-```xml
-<com.google.android.material.navigation.NavigationView
-    ...
-    app:headerLayout="@layout/header_navigation_drawer" />
-```
-
-In `res/layout/header_navigation_drawer.xml`:
-
-```xml
-<LinearLayout
-    ...
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:textAppearance="?attr/textAppearanceHeadlineSmall"
-        android:textColor="?attr/colorOnSurface"
-        android:text="@string/header_title" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:textAppearance="?attr/textAppearanceTitleSmall"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:text="@string/header_text" />
-
-</LinearLayout>
-```
-
-### Adding dividers and subtitles
-
-![Nav drawer with "Header title", "Header text", "Mail" subheader, and 6 items
-with a divider between items 3 and
-4](assets/navigationdrawer/navigation-drawer-dividers-subtitles.png)
-
-Dividers are automatically added between `<item>` groups with unique IDs or
-`<group>`s with unique IDs. When a sub-`<menu>` is added to an item it is
-treated as a subtitle.
-
-In `res/menu/navigation_drawer.xml`:
-
-```xml
-<menu ...>
-  <item
-    android:id="@+id/main_item"
-    android:title="@string/mail_subheader_title">
-      <menu>
-        <item
-          android:id="@+id/search_item"
-          android:icon="@drawable/ic_search_24px"
-          android:title="@string/search_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-        <item
-          android:id="@+id/rotation_item"
-          android:icon="@drawable/ic_3d_rotation_24px"
-          android:title="@string/3d_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-        <item
-          android:id="@+id/accelerator_item"
-          android:icon="@drawable/ic_accelerator_24px"
-          android:title="@string/accelerator_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-        <item
-          android:id="@+id/dashboard_item"
-          android:icon="@drawable/ic_dashboard_24px"
-          android:title="@string/dashboard_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-      </menu>
-  </item>
-  <item
-    android:id="@+id/labels_item"
-    android:title="@string/labels_subheader_title">
-      <menu>
-        <item
-          android:id="@+id/label_one"
-          android:icon="@drawable/ic_label_24px"
-          android:title="@string/label_one_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-        <item
-          android:id="@+id/label_two"
-          android:icon="@drawable/ic_label_24px"
-          android:title="@string/label_two_title"
-          android:checkable="true"
-          app:showAsAction="ifRoom"/>
-      </menu>
-  </item>
-
-</menu>
-```
-
-### Making navigation drawers accessible
-
-Navigation drawers support content labeling for accessibility and are readable
-by most screen readers, such as TalkBack. Text rendered in menu items is
-automatically provided to accessibility services. Additional content labels are
-optional but recommended.
-
-For more information on content labels, go to the
-[Android accessibility help guide](https://support.google.com/accessibility/android/answer/7158690).
-
-#### Content descriptions
-
-A content description can be set on `<item>`s in the `NavigationView` menu so
-that screen readers like TalkBack are able to announce their purpose or action.
-This can be done in XML using the `android:contentDescription` attribute or
-programmatically with
-`navigationView.menu.findItem(R.id.itemId)#setContentDescription` (on API 26 and
-above).
-
-Any `ImageView`s within the header layout should also have a content description
-set.
-
-#### Opening and closing navigation drawers
-
-To open navigation drawers, use clickable widgets that meet the minimum touch
-target size of `48dp` and are properly labeled for accessibility. To close
-navigation drawers, consider doing the same but bear in mind that clicking on
-menu items or an optional scrim should also serve this purpose.
-
-### Using navigation drawers with the Navigation component
-
-Navigation drawers can be used with the AndroidX Navigation library. For more
-information, go to the
-[documentation](https://developer.android.com/guide/navigation/navigation-ui#add_a_navigation_drawer).
+*   [Material 3 (M3) spec](https://m3.material.io/components/navigation-drawer/overview)
+*   [API reference](https://developer.android.com/reference/com/google/android/material/navigation/package-summary)
 
 ## Anatomy
 
-Navigation drawers have a container, an optional header, optional dividers,
-items with inactive text, active text, and an active text overlay, optional
-subtitles, and an optional scrim.
-
-![Navigation drawer anatomy](assets/navigationdrawer/navigation-drawer-anatomy.png)
+<img src="assets/navigationdrawer/navigation-drawer-anatomy.png" alt="Navigation drawer anatomy diagram" width="800">
 
 1.  Container
-2.  Subheader (optional)
+2.  Headline
 3.  Label text
-4.  Icon (optional)
-5.  Active indicator/Item shape
-6.  Badge text (coming soon)
-7.  Divider
-8.  Scrim (modal drawer only)
+4.  Icon
+5.  Active indicator
+6.  Badge label text
+7.  Scrim
+
+More details on anatomy items are available in the
+[component guidelines](https://m3.material.io/components/navigation-drawer/guidelines#86ff751b-e510-4428-bfb2-cc5bf9206bb8).
+
+## M3 Expressive update
+
+The navigation drawer is being deprecated. Use the [expanded navigation rail](https://m3.material.io/components/navigation-rail/overview)
+instead. [More on M3 Expressive](https://m3.material.io/blog/building-with-m3-expressive)
+
+## Key properties
 
 ### Container attributes
 
 Element                 | Attribute(s)                                                        | Related method(s)                                | Default value
 ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------ | -------------
-**Color**               | `android:background`                                                | `setBackground`<br>`getBackground`               | `?attr/colorSurface`
+**Color**               | `android:background`                                                | `setBackground`<br>`getBackground`               | `?attr/colorSurfaceContainerLow`
 **Shape**               | `app:shapeAppearance`<br>`app:shapeAppearanceOverlay`               | N/A                                              | `null`
 **Elevation**           | `app:elevation` (can be used on `NavigationView` or `DrawerLayout`) | `setElevation`<br>`getElevation`                 | `0dp` (`NavigationView`) or `1dp` (`DrawerLayout`)
 **Max width**           | `android:maxWidth`                                                  | N/A                                              | `280dp`
 **Fits system windows** | `android:fitsSystemWindows`                                         | `setFitsSystemWindows`<br>`getFitsSystemWindows` | `true`
+**Drawer corner size**  | `drawerLayoutCornerSize`                                            | N/A                                              | `16dp`
 
 ### Header attributes
 
@@ -288,11 +89,12 @@ Element                | Attribute(s)                                           
 
 ### Text attributes
 
-Element        | Attribute                | Related method(s)                        | Default value
--------------- | ------------------------ | ---------------------------------------- | -------------
-**Color**      | `app:itemTextColor`      | `setItemTextColor`<br>`getItemTextColor` | `?attr/colorOnSecondaryContainer` when active else `?attr/colorOnSurfaceVariant`
-**Typography** | `app:itemTextAppearance` | `setItemTextAppearance`                  | `?attr/textAppearanceLabelLarge`
-**Max lines**  | `app:itemMaxLines`       | `setItemMaxLines`<br>`getItemMaxLines`   | `1`
+Element                 | Attribute                                 | Related method(s)                        | Default value
+----------------------- | ----------------------------------------- | ---------------------------------------- | -------------
+**Color**               | `app:itemTextColor`                       | `setItemTextColor`<br>`getItemTextColor` | `?attr/colorOnSecondaryContainer` when active else `?attr/colorOnSurfaceVariant`
+**Typography**          | `app:itemTextAppearance`                  | `setItemTextAppearance`                  | `?attr/textAppearanceLabelLarge`
+**Typography (active)** | `app:itemTextAppearanceActiveBoldEnabled` | `setItemTextAppearanceActiveBoldEnabled` | `true`
+**Max lines**           | `app:itemMaxLines`                        | `setItemMaxLines`<br>`getItemMaxLines`   | `1`
 
 ### Icon attributes
 
@@ -314,52 +116,44 @@ Element        | Attribute                                             | Related
 
 ### Scrim attributes
 
-Element   | Attribute | Related method(s)                 | Default value
---------- | --------- | --------------------------------- | --------------------
-**Color** | N/A       | `setScrimColor` on `DrawerLayout` | Black at 60% opacity
+Element           | Attribute                                                                                                     | Related method(s)                                                                                                                                                                                                                                 | Default value
+----------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------
+**Color**         | N/A                                                                                                           | `setScrimColor` on `DrawerLayout`                                                                                                                                                                                                                 | Black at 60% opacity
+**Window Insets** | `app:topInsetScrimEnabled`<br/>`app:bottomScrimEnabled`<br/>`app:startScrimEnabled`<br/>`app:endScrimEnabled` | `setTopInsetScrimEnabled`<br/>`isTopInsetScrimEnabled`<br/>`setBottomInsetScrimEnabled`<br/>`isBottomInsetScrimEnabled`<br/>`setStartInsetScrimEnabled`<br/>`isStartInsetScrimEnabled`<br/>`setEndInsetScrimEnabled`<br/>`isEndInsetScrimEnabled` | true
 
 ### `NavigationView` styles
 
-Element           | Style
------------------ | ---------------------------------
-**Default style** | `Widget.Material3.NavigationView`
-
-Default style theme attribute: `?attr/navigationViewStyle`
+Element           | Style                             | Theme attribute
+----------------- | --------------------------------- | ---------------------------
+**Default style** | `Widget.Material3.NavigationView` | `?attr/navigationViewStyle`
 
 ### `DrawerLayout` styles
-Element           | Style
------------------ | ---------------------------------
-**Default style** | `Widget.Material3.DrawerLayout`
 
-Default style theme attribute: `?attr/drawerLayoutStyle`
+Element           | Style                           | Theme attribute
+----------------- | ------------------------------- | -------------------------
+**Default style** | `Widget.Material3.DrawerLayout` | `?attr/drawerLayoutStyle`
 
-### Types
+## Variants of navigation drawer
 
-There are three types of navigation drawers: 1\.
-[Standard navigation drawer](#standard-navigation-drawer), 2\.
-[Modal navigation drawer](#modal-navigation-drawer), 3\.
-[Bottom navigation drawer](#bottom-navigation-drawer)
-
-## Standard navigation drawer
+<details>
+  <summary><h3>Standard navigation drawer</h3></summary>
 
 [Standard navigation drawers](https://material.io/components/navigation-drawer#standard-drawer)
 allow interaction with both screen content and the drawer at the same time. They
 can be used on tablet and desktop, but they aren’t suitable for mobile devices
 due to limited screen size.
 
-### Standard navigation drawer example
-
 API and source code:
 
 *   `NavigationView`
     *   [Class definition](https://developer.android.com/reference/com/google/android/material/navigation/NavigationView)
-    *   [Class source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
+    *   [GitHub source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
+
+#### Standard navigation drawer example
 
 The following example shows a permanently visible standard navigation drawer.
 
-![Nav drawer with "Header title", "Header text", “Subtitle”, and 3 items with
-icons on left of
-screen.](assets/navigationdrawer/navigation-drawer-standard.png)
+<img src="assets/navigationdrawer/navigation-drawer-standard.png" alt="nav drawer with header title,header text, subtitle, and 3 items with icons on left of screen." height="300">
 
 In the layout:
 
@@ -400,7 +194,10 @@ In `res/layout/header_navigation_drawer.xml`:
 </LinearLayout>
 ```
 
-## Modal navigation drawer
+</details>
+
+<details>
+  <summary><h3>Modal navigation drawer</h3></summary>
 
 [Modal navigation drawers](https://material.io/components/navigation-drawer#modal-drawer)
 block interaction with the rest of an app’s content with a scrim. They are
@@ -409,21 +206,23 @@ elevated above most of the app’s UI and don’t affect the screen’s layout g
 They are primarily used for mobile devices where screen space is limited, and
 can be replaced by standard drawers on tablet and desktop.
 
-### Modal navigation drawer example
+[DrawerLayout](https://developer.android.com/reference/androidx/drawerlayout/widget/DrawerLayout)
+is used in conjunction with NavigationDrawer to achieve the modal navigation
+drawer.
 
 API and source code:
 
 *   `NavigationView`
     *   [Class definition](https://developer.android.com/reference/com/google/android/material/navigation/NavigationView)
-    *   [Class source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
+    *   [GitHub source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
 *   `DrawerLayout`
-    *   [Class definition](https://developer.android.com/reference/kotlin/androidx/drawerlayout/widget/DrawerLayout)
+    *   [Class definition](https://developer.android.com/reference/androidx/drawerlayout/widget/DrawerLayout)
+
+#### Modal navigation drawer example
 
 The following example shows a modal navigation drawer.
 
-![A screen with a modal navigation drawer open. The drawer container "Header
-title", "Header text", and 6
-items.](assets/navigationdrawer/navigation-drawer-modal.png)
+<img src="assets/navigationdrawer/navigation-drawer-modal.png" alt="A screen with a modal navigation drawer open. The drawer container, header title, header text, and six items." height="600">
 
 In the layout:
 
@@ -492,117 +291,280 @@ navigationView.setNavigationItemSelectedListener { menuItem ->
 For more information on top app bars see the
 [documentation](https://github.com/material-components/material-components-android/tree/master/docs/components/TopAppBar.md).
 
-## Bottom navigation drawer
+</details>
 
-[Bottom navigation drawers](https://material.io/components/navigation-drawer#bottom-drawer)
-are modal drawers that are anchored to the bottom of the screen instead of the
-left or right edge. They are only used with bottom app bars.
+## Code implementation
 
-These drawers open upon tapping the navigation menu icon in the bottom app bar.
-They are only for use on mobile devices.
+Before you can use navigation drawers, you need to add a dependency to the
+Material components for Android library. For more information, go to the
+[Getting started](https://github.com/material-components/material-components-android/tree/master/docs/getting-started.md)
+page. For modal navigation drawers you also need to add a dependency to the
+AndroidX `DrawerLayout` library. For more information go to the
+[releases](https://developer.android.com/jetpack/androidx/releases/drawerlayout)
+page.
 
-### Bottom navigation drawer example
+<details>
+  <summary><h3>Adding navigation drawer</h3></summary>
 
-API and source code:
+The content of all navigation drawer types can be implemented using a
+`NavigationView`.
 
-*   `NavigationView`
-    *   [Class definition](https://developer.android.com/reference/com/google/android/material/navigation/NavigationView)
-    *   [Class source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
-*   `BottomSheetBehavior`
-    *   [Class definition](https://developer.android.com/reference/com/google/android/material/bottomsheet/BottomSheetBehavior)
-    *   [Class source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/bottomsheet/BottomSheetBehavior.java)
+```xml
+<com.google.android.material.navigation.NavigationView
+  android:id="@+id/navigationView"
+  ... />
+```
 
-The following example shows a bottom navigation drawer with a bottom app bar.
+**Note:** The `layout_width` and `layout_height` attributes should be set to
+`wrap_content`, `match_parent`, or a custom dimension depending on the
+navigation drawer type and parent `ViewGroup`.
 
-![2 views: screen with bottom app bar; nav drawer covering bottom with scrim
-over remaining screen.](assets/navigationdrawer/navigation_drawer_bottom.png)
+</details>
+
+<details>
+  <summary><h3>Adding menu</h3></summary>
+
+<img src="assets/navigationdrawer/navigation-drawer-basic.png" alt="Nav drawer with 3 menu items" height="300">
 
 In the layout:
 
 ```xml
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<com.google.android.material.navigation.NavigationView
+    ...
+    app:menu="@menu/navigation_drawer" />
+```
+
+In `res/menu/navigation_drawer.xml`:
+
+```xml
+<menu ...>
+
+  <item
+    android:id="@+id/main_item"
+    android:title="@string/mail_subheader_title">
+      <menu>
+        <item
+          android:id="@+id/inbox_item"
+          android:icon="@drawable/ic_inbox_24px"
+          android:title="@string/inbox_title"
+          android:checkable="true"/>
+        <item
+          android:id="@+id/outbox_item"
+          android:icon="@drawable/ic_outbox_24px"
+          android:title="@string/outbox_title"
+          android:checkable="true"/>
+        <item
+          android:id="@+id/favourites_item"
+          android:icon="@drawable/ic_favourites_24px"
+          android:title="@string/favourites_title"
+          android:checkable="true">
+      </menu>
+  </item>
+
+</menu>
+```
+
+</details>
+
+<details>
+  <summary><h3>Adding header</h3></summary>
+
+<img src="assets/navigationdrawer/navigation-drawer-header.png" alt="Nav drawer with Header title, Header text, a Mail subheader, and 3 items. Item 1 is selected." height="500">
+
+In the layout:
+
+```xml
+<com.google.android.material.navigation.NavigationView
+    ...
+    app:headerLayout="@layout/header_navigation_drawer" />
+```
+
+In `res/layout/header_navigation_drawer.xml`:
+
+```xml
+<LinearLayout
     ...
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="?attr/actionBarSize">
-
-        <!-- Screen content -->
-
-        <FrameLayout
-            android:id="@+id/scrim"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <com.google.android.material.navigation.NavigationView
-            ...
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_behavior="@string/bottom_sheet_behavior"
-            app:behavior_hideable="true" />
-
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-    <com.google.android.material.bottomappbar.BottomAppBar
-        android:id="@+id/bottomAppBar"
-        android:layout_width="match_parent"
+    <TextView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        app:navigationIcon="@drawable/ic_menu_24dp" />
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/header_title" />
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:text="@string/header_text" />
+
+</LinearLayout>
 ```
 
-In code:
+</details>
 
-```kt
-val bottomSheetBehavior = BottomSheetBehavior.from(navigationView)
-bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+<details>
+  <summary><h3>Adding dividers and subtitles</h3></summary>
 
-bottomAppBar.setNavigationOnClickListener {
-    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-}
+<img src="assets/navigationdrawer/navigation-drawer-dividers-subtitles.png" alt="Nav drawer with Header title, Header text, Mail subheader, and 6 items with a divider between items 3 and 4" height="500">
 
-navigationView.setNavigationItemSelectedListener { menuItem ->
-    // Handle menu item selected
-    menuItem.isChecked = true
-    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-    true
-}
+Dividers are automatically added between `<item>` groups with unique IDs or
+`<group>`s with unique IDs. When a sub-`<menu>` is added to an item it is
+treated as a subtitle.
 
-scrim.setOnClickListener {
-    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-}
+In `res/menu/navigation_drawer.xml`:
 
-bottomSheetBehavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
-    override fun onSlide(bottomSheet: View, slideOffset: Float) {
-        val baseColor = Color.BLACK
-        // 60% opacity
-        val baseAlpha = ResourcesCompat.getFloat(resources, R.dimen.material_emphasis_medium)
-        // Map slideOffset from [-1.0, 1.0] to [0.0, 1.0]
-        val offset = (slideOffset - (-1f)) / (1f - (-1f)) * (1f - 0f) + 0f
-        val alpha = MathUtils.lerp(0f, 255f, offset * baseAlpha).toInt()
-        val color = Color.argb(alpha, baseColor.red, baseColor.green, baseColor.blue)
-        scrim.setBackgroundColor(color)
-    }
-    override fun onStateChanged(bottomSheet: View, newState: Int) {
-    }
-})
+```xml
+<menu ...>
+  <item
+    android:id="@+id/main_item"
+    android:title="@string/mail_subheader_title">
+      <menu>
+        <item
+          android:id="@+id/search_item"
+          android:icon="@drawable/ic_search_24px"
+          android:title="@string/search_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+        <item
+          android:id="@+id/rotation_item"
+          android:icon="@drawable/ic_3d_rotation_24px"
+          android:title="@string/3d_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+        <item
+          android:id="@+id/accelerator_item"
+          android:icon="@drawable/ic_accelerator_24px"
+          android:title="@string/accelerator_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+        <item
+          android:id="@+id/dashboard_item"
+          android:icon="@drawable/ic_dashboard_24px"
+          android:title="@string/dashboard_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+      </menu>
+  </item>
+  <item
+    android:id="@+id/labels_item"
+    android:title="@string/labels_subheader_title">
+      <menu>
+        <item
+          android:id="@+id/label_one"
+          android:icon="@drawable/ic_label_24px"
+          android:title="@string/label_one_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+        <item
+          android:id="@+id/label_two"
+          android:icon="@drawable/ic_label_24px"
+          android:title="@string/label_two_title"
+          android:checkable="true"
+          app:showAsAction="ifRoom"/>
+      </menu>
+  </item>
+
+</menu>
 ```
 
-For more information on bottom app bars see the
-[documentation](https://github.com/material-components/material-components-android/tree/master/docs/components/BottomAppBar.md).
+</details>
 
-## Theming
+<details>
+  <summary><h3>Making navigation drawers accessible</h3></summary>
 
-Navigation drawers support
-[Material Theming](https://material.io/components/text-fields/#theming) which
-can customize color, typography and shape.
+Navigation drawers support content labeling for accessibility and are readable
+by most screen readers, such as TalkBack. Text rendered in menu items is
+automatically provided to accessibility services. Additional content labels are
+optional but recommended.
 
-### Navigation drawer theming example
+For more information on content labels, go to the
+[Android accessibility help guide](https://support.google.com/accessibility/android/answer/7158690).
+
+Important: Ensure that there is a way to close the navigation drawer through
+keyboard navigation by listening for the `esc` key in your activity and closing
+open drawers.
+
+```java
+  @Override
+  public boolean dispatchKeyEvent(KeyEvent keyEvent) {
+    if (keyEvent.getKeyCode() == KeyEvent.KEYCODE_ESCAPE && drawerLayout.isDrawerOpen(navigationView)) {
+      drawerLayout.closeDrawer(navigationView);
+      return true;
+    }
+    return super.dispatchKeyEvent(keyEvent);
+  }
+```
+
+</details>
+
+<details>
+  <summary><h3>Setting content descriptions</h3></summary>
+
+A content description can be set on `<item>`s in the `NavigationView` menu so
+that screen readers like TalkBack are able to announce their purpose or action.
+This can be done in XML using the `android:contentDescription` attribute or
+programmatically with
+`navigationView.menu.findItem(R.id.itemId)#setContentDescription` (on API 26 and
+above).
+
+Any `ImageView`s within the header layout should also have a content description
+set.
+
+</details>
+
+<details>
+  <summary><h3>Opening and closing navigation drawers</h3></summary>
+
+To open navigation drawers, use clickable widgets that meet the minimum touch
+target size of `48dp` and are properly labeled for accessibility. To close
+navigation drawers, consider doing the same but bear in mind that clicking on
+menu items or an optional scrim should also serve this purpose.
+
+</details>
+
+<details>
+  <summary><h3>Using navigation drawers with the navigation component</h3></summary>
+
+Navigation drawers can be used with the AndroidX navigation library. For more
+information, go to the
+[documentation](https://developer.android.com/guide/navigation/navigation-ui#add_a_navigation_drawer).
+
+</details>
+
+<details>
+  <summary><h3>Predictive back</h3></summary>
+
+The `NavigationView` component automatically supports
+[predictive back](/third_party/java_src/android_libs/material_components/docs/foundations/PredictiveBack.md)
+when it is set up within a `DrawerLayout`, as mentioned in the sections above.
+No further integration is required on the app side other than the general
+predictive back prerequisites and migration steps mentioned
+[here](/third_party/java_src/android_libs/material_components/docs/foundations/PredictiveBack.md#usage).
+
+Visit the
+[predictive back design guidelines](https://m3.material.io/components/side-sheets/guidelines#d77245e3-1013-48f8-a9d7-76f484e1be13)
+to see how the component behaves when a user swipes back.
+
+</details>
+
+## Customizing navigation drawers
+
+### Theming navigation drawers
+
+Navigation drawers support the customization of color, typography, and shape.
+
+#### Navigation drawer theming example
 
 API and source code:
 
@@ -610,13 +572,11 @@ API and source code:
     *   [Class definition](https://developer.android.com/reference/com/google/android/material/navigation/NavigationView)
     *   [GitHub source](https://github.com/material-components/material-components-android/tree/master/lib/java/com/google/android/material/navigation/NavigationView.java)
 
-The following example shows a navigation drawer with Material Theming.
+The following example shows a navigation drawer with Material theming.
 
-![Nav drawer with “Header”, “Header text”, “Mail” subtitle and 6 items: brown
-text and icons, pink
-containers.](assets/navigationdrawer/navigation-drawer-theming.png)
+<img src="assets/navigationdrawer/navigation-drawer-theming.png" alt="Nav drawer with “Header”, “Header text”, “Mail” subtitle and 6 items: brown text and icons, pink containers" height="600">
 
-#### Implementing navigation drawer theming
+##### Implementing navigation drawer theming
 
 Use theme attributes, default style theme attributes, and styles in
 `res/values/styles.xml`, which applies to all navigation drawers and affects

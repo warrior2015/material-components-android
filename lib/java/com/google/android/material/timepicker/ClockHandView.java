@@ -18,11 +18,14 @@ package com.google.android.material.timepicker;
 
 import com.google.android.material.R;
 
+import static com.google.android.material.timepicker.RadialViewGroup.LEVEL_1;
+import static com.google.android.material.timepicker.RadialViewGroup.LEVEL_2;
+import static com.google.android.material.timepicker.RadialViewGroup.LEVEL_RADIUS_RATIO;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
-import android.animation.ValueAnimator.AnimatorUpdateListener;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
@@ -37,22 +40,30 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import androidx.annotation.Dimension;
 import androidx.annotation.FloatRange;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.Px;
-import androidx.core.view.ViewCompat;
+import com.google.android.material.animation.AnimationUtils;
+import com.google.android.material.internal.ViewUtils;
+import com.google.android.material.math.MathUtils;
+import com.google.android.material.motion.MotionUtils;
+import com.google.android.material.timepicker.RadialViewGroup.Level;
 import java.util.ArrayList;
 import java.util.List;
 
 /** A Class to draw the hand on a Clock face. */
 class ClockHandView extends View {
 
-  private static final int ANIMATION_DURATION = 200;
-  private ValueAnimator rotationAnimator;
+  private static final int DEFAULT_ANIMATION_DURATION = 200;
+  private final int animationDuration;
+  private final TimeInterpolator animationInterpolator;
+  @NonNull private final ValueAnimator rotationAnimator = new ValueAnimator();
   private boolean animatingOnTouchUp;
   private float downX;
   private float downY;
   private boolean isInTapRegion;
-  private int scaledTouchSlop;
+  private final int scaledTouchSlop;
+  private boolean isMultiLevel;
 
   /** A listener whenever the hand is rotated. */
   public interface OnRotateListener {
@@ -83,6 +94,8 @@ class ClockHandView extends View {
   private double degRad;
   private int circleRadius;
 
+  @Level private int currentLevel = LEVEL_1;
+
   public ClockHandView(Context context) {
     this(context, null);
   }
@@ -100,6 +113,14 @@ class ClockHandView extends View {
             defStyleAttr,
             R.style.Widget_MaterialComponents_TimePicker_Clock);
 
+    animationDuration =
+        MotionUtils.resolveThemeDuration(
+            context, R.attr.motionDurationLong2, DEFAULT_ANIMATION_DURATION);
+    animationInterpolator =
+        MotionUtils.resolveThemeInterpolator(
+            context,
+            R.attr.motionEasingEmphasizedInterpolator,
+            AnimationUtils.FAST_OUT_SLOW_IN_INTERPOLATOR);
     circleRadius = a.getDimensionPixelSize(R.styleable.ClockHandView_materialCircleRadius, 0);
     selectorRadius = a.getDimensionPixelSize(R.styleable.ClockHandView_selectorSize, 0);
     Resources res = getResources();
@@ -111,41 +132,18 @@ class ClockHandView extends View {
     setHandRotation(0);
 
     scaledTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-    ViewCompat.setImportantForAccessibility(this, ViewCompat.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
     a.recycle();
+
+    initRotationAnimator();
   }
 
-  @Override
-  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-    super.onLayout(changed, left, top, right, bottom);
-    // Refresh selector position.
-    setHandRotation(getHandRotation());
-  }
-
-  public void setHandRotation(@FloatRange(from = 0f, to = 360f) float degrees) {
-    setHandRotation(degrees, false);
-  }
-
-  public void setHandRotation(@FloatRange(from = 0f, to = 360f) float degrees, boolean animate) {
-    if (rotationAnimator != null) {
-      rotationAnimator.cancel();
-    }
-
-    if (!animate) {
-      setHandRotationInternal(degrees, false);
-      return;
-    }
-
-    Pair<Float, Float> animationValues = getValuesForAnimation(degrees);
-    rotationAnimator = ValueAnimator.ofFloat(animationValues.first, animationValues.second);
-    rotationAnimator.setDuration(ANIMATION_DURATION);
-    rotationAnimator.addUpdateListener(new AnimatorUpdateListener() {
-      @Override
-      public void onAnimationUpdate(ValueAnimator animation) {
-        float animatedValue = (float) animation.getAnimatedValue();
-        setHandRotationInternal(animatedValue, true);
-      }
-    });
+  private void initRotationAnimator() {
+    rotationAnimator.addUpdateListener(
+        animation -> {
+          float animatedValue = (float) animation.getAnimatedValue();
+          setHandRotationInternal(animatedValue, true);
+        });
 
     rotationAnimator.addListener(new AnimatorListenerAdapter() {
       @Override
@@ -153,7 +151,33 @@ class ClockHandView extends View {
         animation.end();
       }
     });
+  }
 
+  @Override
+  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    super.onLayout(changed, left, top, right, bottom);
+    if (!rotationAnimator.isRunning()) {
+      // Refresh selector position.
+      setHandRotation(getHandRotation());
+    }
+  }
+
+  public void setHandRotation(@FloatRange(from = 0f, to = 360f) float degrees) {
+    setHandRotation(degrees, false);
+  }
+
+  public void setHandRotation(@FloatRange(from = 0f, to = 360f) float degrees, boolean animate) {
+    rotationAnimator.cancel();
+
+    if (!animate) {
+      setHandRotationInternal(degrees, false);
+      return;
+    }
+
+    Pair<Float, Float> animationValues = getValuesForAnimation(degrees);
+    rotationAnimator.setFloatValues(animationValues.first, animationValues.second);
+    rotationAnimator.setDuration(animationDuration);
+    rotationAnimator.setInterpolator(animationInterpolator);
     rotationAnimator.start();
   }
 
@@ -186,8 +210,9 @@ class ClockHandView extends View {
     degRad = Math.toRadians(angDeg);
     int yCenter = getHeight() / 2;
     int xCenter = getWidth() / 2;
-    float selCenterX = xCenter + circleRadius * (float) Math.cos(degRad);
-    float selCenterY = yCenter + circleRadius * (float) Math.sin(degRad);
+    int leveledCircleRadius = getLeveledCircleRadius(currentLevel);
+    float selCenterX = xCenter + leveledCircleRadius * (float) Math.cos(degRad);
+    float selCenterY = yCenter + leveledCircleRadius * (float) Math.sin(degRad);
     selectorBox.set(
         selCenterX - selectorRadius,
         selCenterY - selectorRadius,
@@ -230,8 +255,9 @@ class ClockHandView extends View {
     int xCenter = getWidth() / 2;
 
     // Calculate the current radius at which to place the selection circle.
-    float selCenterX = xCenter + circleRadius * (float) Math.cos(degRad);
-    float selCenterY = yCenter + circleRadius * (float) Math.sin(degRad);
+    int leveledCircleRadius = getLeveledCircleRadius(currentLevel);
+    float selCenterX = xCenter + leveledCircleRadius * (float) Math.cos(degRad);
+    float selCenterY = yCenter + leveledCircleRadius * (float) Math.sin(degRad);
 
     // Draw the selection circle.
     paint.setStrokeWidth(0);
@@ -241,7 +267,7 @@ class ClockHandView extends View {
     // edge of the selection circle.
     double sin = Math.sin(degRad);
     double cos = Math.cos(degRad);
-    float lineLength = circleRadius - selectorRadius;
+    float lineLength = leveledCircleRadius - selectorRadius;
     float linePointX = xCenter + (int) (lineLength * cos);
     float linePointY = yCenter + (int) (lineLength * sin);
 
@@ -299,8 +325,10 @@ class ClockHandView extends View {
         if (changedDuringTouch) {
           forceSelection = true;
         }
-
         actionUp = action == MotionEvent.ACTION_UP;
+        if (isMultiLevel) {
+          adjustLevel(x, y);
+        }
         break;
       default:
         break;
@@ -312,6 +340,15 @@ class ClockHandView extends View {
     }
 
     return true;
+  }
+
+  private void adjustLevel(float x, float y) {
+    int xCenter = getWidth() / 2;
+    int yCenter = getHeight() / 2;
+    float selectionRadius = MathUtils.dist(xCenter, yCenter, x, y);
+    int level2CircleRadius = getLeveledCircleRadius(LEVEL_2);
+    float buffer = ViewUtils.dpToPx(getContext(), 12);
+    currentLevel = selectionRadius <= level2CircleRadius + buffer ? LEVEL_2 : LEVEL_1;
   }
 
   private boolean handleTouchInput(
@@ -340,5 +377,28 @@ class ClockHandView extends View {
       degrees += 360;
     }
     return degrees;
+  }
+
+  @Level
+  int getCurrentLevel() {
+    return currentLevel;
+  }
+
+  void setCurrentLevel(@Level int level) {
+    currentLevel = level;
+    invalidate();
+  }
+
+  void setMultiLevel(boolean isMultiLevel) {
+    if (this.isMultiLevel && !isMultiLevel) {
+      currentLevel = LEVEL_1; // reset
+    }
+    this.isMultiLevel = isMultiLevel;
+    invalidate();
+  }
+
+  @Dimension
+  private int getLeveledCircleRadius(@Level int level) {
+    return level == LEVEL_2 ? Math.round(circleRadius * LEVEL_RADIUS_RATIO) : circleRadius;
   }
 }

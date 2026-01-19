@@ -29,28 +29,33 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.FrameLayout;
-import android.widget.FrameLayout.LayoutParams;
 import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.annotation.PluralsRes;
 import androidx.annotation.Px;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.StringRes;
 import androidx.annotation.StyleRes;
 import androidx.annotation.XmlRes;
-import androidx.core.view.ViewCompat;
+import com.google.android.material.animation.AnimationUtils;
 import com.google.android.material.internal.TextDrawableHelper;
 import com.google.android.material.internal.TextDrawableHelper.TextDrawableDelegate;
 import com.google.android.material.internal.ThemeEnforcement;
+import com.google.android.material.resources.MaterialResources;
 import com.google.android.material.resources.TextAppearance;
 import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
@@ -112,21 +117,29 @@ import java.util.Locale;
  * </pre>
  *
  * <p>By default, {@code BadgeDrawable} is aligned to the top and end edges of its anchor view (with
- * some offsets). Call {@link #setBadgeGravity(int)} to change it to one of the other supported
- * modes. To adjust the badge's offsets w.r.t. the anchor's center, use {@link
+ * some offsets). Call {@link #setBadgeGravity(int)} to change it to {@link #TOP_START}, the other
+ * supported mode. To adjust the badge's offsets w.r.t. the anchor's center, use {@link
  * BadgeDrawable#setHorizontalOffset(int)}, {@link BadgeDrawable#setVerticalOffset(int)}
  *
  * <p>Note: This is still under development and may not support the full range of customization
  * Material Android components generally support (e.g. themed attributes).
+ *
+ * <p>For more information, see the <a
+ * href="https://github.com/material-components/material-components-android/blob/master/docs/components/BadgeDrawable.md">component
+ * developer guidance</a> and <a href="https://material.io/components/badges/overview">design
+ * guidelines</a>.
  */
+@OptIn(markerClass = com.google.android.material.badge.ExperimentalBadgeUtils.class)
 public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
+
+  private static final String TAG = "Badge";
 
   /** Position the badge can be set to. */
   @IntDef({
-    TOP_END,
-    TOP_START,
-    BOTTOM_END,
-    BOTTOM_START,
+      TOP_END,
+      TOP_START,
+      BOTTOM_END,
+      BOTTOM_START,
   })
   @Retention(RetentionPolicy.SOURCE)
   public @interface BadgeGravity {}
@@ -137,23 +150,85 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   /** The badge is positioned along the top and start edges of its anchor view */
   public static final int TOP_START = Gravity.TOP | Gravity.START;
 
-  /** The badge is positioned along the bottom and end edges of its anchor view */
-  public static final int BOTTOM_END = Gravity.BOTTOM | Gravity.END;
+  /**
+   * The badge is positioned along the bottom and end edges of its anchor view
+   *
+   * @deprecated Bottom badge gravities are deprecated in favor of top gravities; use {@link
+   *     #TOP_START} or {@link #TOP_END} instead.
+   */
+  @Deprecated public static final int BOTTOM_END = Gravity.BOTTOM | Gravity.END;
 
-  /** The badge is positioned along the bottom and start edges of its anchor view */
-  public static final int BOTTOM_START = Gravity.BOTTOM | Gravity.START;
-
-  /** Maximum value of number that can be displayed in a circular badge. */
-  private static final int MAX_CIRCULAR_BADGE_NUMBER_COUNT = 9;
+  /**
+   * The badge is positioned along the bottom and start edges of its anchor view
+   *
+   * @deprecated Bottom badge gravities are deprecated in favor of top gravities; use {@link
+   *     #TOP_START} or {@link #TOP_END} instead.
+   */
+  @Deprecated public static final int BOTTOM_START = Gravity.BOTTOM | Gravity.START;
 
   @StyleRes private static final int DEFAULT_STYLE = R.style.Widget_MaterialComponents_Badge;
   @AttrRes private static final int DEFAULT_THEME_ATTR = R.attr.badgeStyle;
 
   /**
    * If the badge number exceeds the maximum allowed number, append this suffix to the max badge
-   * number and display is as the badge text instead.
+   * number and display it as the badge text instead.
    */
   static final String DEFAULT_EXCEED_MAX_BADGE_NUMBER_SUFFIX = "+";
+
+  /**
+   * If the badge string exceeds the maximum allowed number of characters, append this suffix to the
+   * truncated badge text and display it as the badge text instead.
+   */
+  static final String DEFAULT_EXCEED_MAX_BADGE_TEXT_SUFFIX = "\u2026";
+
+  /**
+   * The badge offset begins at the edge of the anchor.
+   */
+  static final int OFFSET_ALIGNMENT_MODE_EDGE = 0;
+
+  /**
+   * Follows the legacy offset alignment behavior. The horizontal offset begins at a variable
+   * permanent inset from the edge of the anchor, and the vertical offset begins at the center
+   * of the badge aligned with the edge of the anchor.
+   */
+  static final int OFFSET_ALIGNMENT_MODE_LEGACY = 1;
+
+  /**
+   * Determines where the badge offsets begin in reference to the anchor.
+   *
+   * @hide
+   */
+  @IntDef({OFFSET_ALIGNMENT_MODE_EDGE, OFFSET_ALIGNMENT_MODE_LEGACY})
+  @Retention(RetentionPolicy.SOURCE)
+  @interface OffsetAlignmentMode {}
+
+  /**
+   * The badge's edge is fixed at the start and grows towards the end.
+   */
+  public static final int BADGE_FIXED_EDGE_START = 0;
+
+  /**
+   * The badge's edge is fixed at the end and grows towards the start.
+   */
+  public static final int BADGE_FIXED_EDGE_END = 1;
+
+  /**
+   * Determines which edge of the badge is fixed, and which direction it grows towards.
+   *
+   * @hide
+   */
+  @IntDef({BADGE_FIXED_EDGE_START, BADGE_FIXED_EDGE_END})
+  @Retention(RetentionPolicy.SOURCE)
+  @interface BadgeFixedEdge {}
+
+  /** A value to indicate that a badge radius has not been specified. */
+  static final int BADGE_RADIUS_NOT_SPECIFIED = -1;
+
+  /** A value to indicate that badge content should not be truncated. */
+  public static final int BADGE_CONTENT_NOT_TRUNCATED = -2;
+
+  /** The font scale threshold to changing the vertical offset of the badge. **/
+  private static final float FONT_SCALE_THRESHOLD = .3F;
 
   @NonNull private final WeakReference<Context> contextRef;
   @NonNull private final MaterialShapeDrawable shapeDrawable;
@@ -220,17 +295,28 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   private void onVisibilityUpdated() {
     boolean visible = state.isVisible();
     setVisible(visible, /* restart= */ false);
-    // When hiding a badge in pre-API 18, invalidate the custom parent in order to trigger a draw
-    // pass to remove this badge from its foreground.
-    if (BadgeUtils.USE_COMPAT_PARENT && getCustomBadgeParent() != null && !visible) {
-      ((ViewGroup) getCustomBadgeParent().getParent()).invalidate();
+  }
+
+  /**
+   * Sets this badge's fixed edge. The badge does not grow in the direction of the fixed edge.
+   *
+   * @param fixedEdge Constant representing a {@link BadgeFixedEdge} value. The two options are
+   *     {@link #BADGE_FIXED_EDGE_START} and {@link #BADGE_FIXED_EDGE_END}.
+   */
+  public void setBadgeFixedEdge(@BadgeFixedEdge int fixedEdge) {
+    if (state.badgeFixedEdge != fixedEdge) {
+      state.badgeFixedEdge = fixedEdge;
+      updateCenterAndBounds();
     }
   }
 
   private void restoreState() {
-    onMaxCharacterCountUpdated();
+    onBadgeShapeAppearanceUpdated();
+    onBadgeTextAppearanceUpdated();
 
-    onNumberUpdated();
+    onMaxBadgeLengthUpdated();
+
+    onBadgeContentUpdated();
     onAlphaUpdated();
     onBackgroundColorUpdated();
     onBadgeTextColorUpdated();
@@ -249,16 +335,23 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     this.contextRef = new WeakReference<>(context);
     ThemeEnforcement.checkMaterialTheme(context);
     badgeBounds = new Rect();
-    shapeDrawable = new MaterialShapeDrawable();
 
     textDrawableHelper = new TextDrawableHelper(/* delegate= */ this);
     textDrawableHelper.getTextPaint().setTextAlign(Paint.Align.CENTER);
 
-    // TODO(b/209973014): make sure this is right
-    setTextAppearanceResource(R.style.TextAppearance_MaterialComponents_Badge);
 
     this.state = new BadgeState(context, badgeResId, defStyleAttr, defStyleRes, savedState);
-
+    shapeDrawable =
+        new MaterialShapeDrawable(
+            ShapeAppearanceModel.builder(
+                    context,
+                    hasBadgeContent()
+                        ? state.getBadgeWithTextShapeAppearanceResId()
+                        : state.getBadgeShapeAppearanceResId(),
+                    hasBadgeContent()
+                        ? state.getBadgeWithTextShapeAppearanceOverlayResId()
+                        : state.getBadgeShapeAppearanceOverlayResId())
+                .build());
     restoreState();
   }
 
@@ -276,7 +369,7 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   @Deprecated
   public void updateBadgeCoordinates(
       @NonNull View anchorView, @Nullable ViewGroup customBadgeParent) {
-    if (customBadgeParent instanceof FrameLayout == false) {
+    if (!(customBadgeParent instanceof FrameLayout)) {
       throw new IllegalArgumentException("customBadgeParent must be a FrameLayout");
     }
     updateBadgeCoordinates(anchorView, (FrameLayout) customBadgeParent);
@@ -286,11 +379,6 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
    * Calculates and updates this badge's center coordinates based on its anchor's bounds. Internally
    * also updates this {@code BadgeDrawable BadgeDrawable's} bounds, because they are dependent on
    * the center coordinates.
-   *
-   * <p>For pre API-18, optionally wrap the anchor in a {@code FrameLayout} (if it's not done
-   * already) that will be inserted into the anchor's view hierarchy and calculate the badge's
-   * coordinates the parent {@code FrameLayout} because the {@code BadgeDrawable} will be set as the
-   * parent's foreground.
    *
    * @param anchorView This badge's anchor.
    */
@@ -303,11 +391,6 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
    * also updates this {@code BadgeDrawable BadgeDrawable's} bounds, because they are dependent on
    * the center coordinates.
    *
-   * <p>For pre API-18, if no {@code customBadgeParent} is specified, optionally wrap the anchor in
-   * a {@code FrameLayout} (if it's not done already) that will be inserted into the anchor's view
-   * hierarchy and calculate the badge's coordinates the parent {@code FrameLayout} because the
-   * {@code BadgeDrawable} will be set as the parent's foreground.
-   *
    * @param anchorView This badge's anchor.
    * @param customBadgeParent An optional parent view that will set this {@code BadgeDrawable} as
    *     its foreground.
@@ -315,15 +398,9 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   public void updateBadgeCoordinates(
       @NonNull View anchorView, @Nullable FrameLayout customBadgeParent) {
     this.anchorViewRef = new WeakReference<>(anchorView);
+    this.customBadgeParentRef = new WeakReference<>(customBadgeParent);
 
-    if (BadgeUtils.USE_COMPAT_PARENT && customBadgeParent == null) {
-      tryWrapAnchorInCompatParent(anchorView);
-    } else {
-      this.customBadgeParentRef = new WeakReference<>(customBadgeParent);
-    }
-    if (!BadgeUtils.USE_COMPAT_PARENT) {
-      updateAnchorParentToNotClip(anchorView);
-    }
+    updateAnchorParentToNotClip(anchorView);
     updateCenterAndBounds();
     invalidateSelf();
   }
@@ -332,48 +409,6 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   @Nullable
   public FrameLayout getCustomBadgeParent() {
     return customBadgeParentRef != null ? customBadgeParentRef.get() : null;
-  }
-
-  /**
-   * ViewOverlay is not supported below api 18, wrap the anchor view in a {@code FrameLayout} in
-   * order to support scrolling.
-   */
-  private void tryWrapAnchorInCompatParent(final View anchorView) {
-    ViewGroup anchorViewParent = (ViewGroup) anchorView.getParent();
-    if ((anchorViewParent != null && anchorViewParent.getId() == R.id.mtrl_anchor_parent)
-        || (customBadgeParentRef != null && customBadgeParentRef.get() == anchorViewParent)) {
-      return;
-    }
-    // Must call this before wrapping the anchor in a FrameLayout.
-    updateAnchorParentToNotClip(anchorView);
-
-    // Create FrameLayout and configure it to wrap the anchor.
-    final FrameLayout frameLayout = new FrameLayout(anchorView.getContext());
-    frameLayout.setId(R.id.mtrl_anchor_parent);
-    frameLayout.setClipChildren(false);
-    frameLayout.setClipToPadding(false);
-    frameLayout.setLayoutParams(anchorView.getLayoutParams());
-    frameLayout.setMinimumWidth(anchorView.getWidth());
-    frameLayout.setMinimumHeight(anchorView.getHeight());
-
-    int anchorIndex = anchorViewParent.indexOfChild(anchorView);
-    anchorViewParent.removeViewAt(anchorIndex);
-    anchorView.setLayoutParams(
-        new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-    frameLayout.addView(anchorView);
-    anchorViewParent.addView(frameLayout, anchorIndex);
-    customBadgeParentRef = new WeakReference<>(frameLayout);
-
-    // Update the badge's coordinates after the FrameLayout has been added to the view hierarchy and
-    // has a size.
-    frameLayout.post(
-        new Runnable() {
-          @Override
-          public void run() {
-            updateBadgeCoordinates(anchorView, frameLayout);
-          }
-        });
   }
 
   private static void updateAnchorParentToNotClip(View anchorView) {
@@ -457,11 +492,11 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
 
   /** Returns whether this badge will display a number. */
   public boolean hasNumber() {
-    return state.hasNumber();
+    return !state.hasText() && state.hasNumber();
   }
 
   /**
-   * Returns this badge's number. Only non-negative integer numbers will be returned because the
+   * Returns the badge's number. Only non-negative integer numbers will be returned because the
    * setter clamps negative values to 0.
    *
    * <p>WARNING: Do not call this method if you are planning to compare to BADGE_NUMBER_NONE
@@ -470,11 +505,11 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
    * @attr ref com.google.android.material.R.styleable#Badge_number
    */
   public int getNumber() {
-    return hasNumber() ? state.getNumber() : 0;
+    return state.hasNumber() ? state.getNumber() : 0;
   }
 
   /**
-   * Sets this badge's number. Only non-negative integer numbers are supported. If the number is
+   * Sets the badge's number. Only non-negative integer numbers are supported. If the number is
    * negative, it will be clamped to 0. The specified value will be displayed, unless its number of
    * digits exceeds {@code maxCharacterCount} in which case a truncated version will be shown.
    *
@@ -489,18 +524,65 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     }
   }
 
-  /** Resets any badge number so that a numberless badge will be displayed. */
+  /** Clears the badge's number. */
   public void clearNumber() {
-    if (hasNumber()) {
+    if (state.hasNumber()) {
       state.clearNumber();
       onNumberUpdated();
     }
   }
 
   private void onNumberUpdated() {
-    textDrawableHelper.setTextWidthDirty(true);
-    updateCenterAndBounds();
-    invalidateSelf();
+    // The text has priority over the number so when the number changes, the badge is updated
+    // only if there is no text.
+    if (!hasText()) {
+      onBadgeContentUpdated();
+    }
+  }
+
+  /** Returns whether the badge will display a text. */
+  public boolean hasText() {
+    return state.hasText();
+  }
+
+  /**
+   * Returns the badge's text.
+   *
+   * @see #setText(String)
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeText
+   */
+  @Nullable
+  public String getText() {
+    return state.getText();
+  }
+
+  /**
+   * Sets the badge's text. The specified text will be displayed, unless its length exceeds {@code
+   * maxCharacterCount} in which case a truncated version will be shown.
+   *
+   * @see #getText()
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeText
+   */
+  public void setText(@Nullable String text) {
+    if (!TextUtils.equals(state.getText(), text)) {
+      state.setText(text);
+      onTextUpdated();
+    }
+  }
+
+  /**
+   * Clears the badge's text.
+   */
+  public void clearText() {
+    if (state.hasText()) {
+      state.clearText();
+      onTextUpdated();
+    }
+  }
+
+  private void onTextUpdated() {
+    // The text has priority over the number so any text change updates the badge content.
+    onBadgeContentUpdated();
   }
 
   /**
@@ -522,13 +604,36 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   public void setMaxCharacterCount(int maxCharacterCount) {
     if (this.state.getMaxCharacterCount() != maxCharacterCount) {
       this.state.setMaxCharacterCount(maxCharacterCount);
-      onMaxCharacterCountUpdated();
+      onMaxBadgeLengthUpdated();
     }
   }
 
-  private void onMaxCharacterCountUpdated() {
+  /**
+   * Returns this badge's max number. If maxCharacterCount is set, it will override this number.
+   *
+   * @see #setMaxNumber(int)
+   * @attr ref com.google.android.material.R.styleable#Badge_maxNumber
+   */
+  public int getMaxNumber() {
+    return state.getMaxNumber();
+  }
+
+  /**
+   * Sets this badge's max number. If maxCharacterCount is set, it will override this number.
+   *
+   * @param maxNumber This badge's max number.
+   * @attr ref com.google.android.material.R.styleable#Badge_maxNumber
+   */
+  public void setMaxNumber(int maxNumber) {
+    if (this.state.getMaxNumber() != maxNumber) {
+      this.state.setMaxNumber(maxNumber);
+      onMaxBadgeLengthUpdated();
+    }
+  }
+
+  private void onMaxBadgeLengthUpdated() {
     updateMaxBadgeNumber();
-    textDrawableHelper.setTextWidthDirty(true);
+    textDrawableHelper.setTextSizeDirty(true);
     updateCenterAndBounds();
     invalidateSelf();
   }
@@ -541,9 +646,13 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   /**
    * Sets this badge's gravity with respect to its anchor view.
    *
-   * @param gravity Constant representing one of 4 possible {@link BadgeGravity} values.
+   * @param gravity Constant representing one of the possible {@link BadgeGravity} values. There are
+   *     two recommended gravities: {@link #TOP_START} and {@link #TOP_END}.
    */
   public void setBadgeGravity(@BadgeGravity int gravity) {
+    if (gravity == BOTTOM_START || gravity == BOTTOM_END) {
+      Log.w(TAG, "Bottom badge gravities are deprecated; please use a top gravity instead.");
+    }
     if (state.getBadgeGravity() != gravity) {
       state.setBadgeGravity(gravity);
       onBadgeGravityUpdated();
@@ -607,8 +716,8 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
       return;
     }
     shapeDrawable.draw(canvas);
-    if (hasNumber()) {
-      drawText(canvas);
+    if (hasBadgeContent()) {
+      drawBadgeContent(canvas);
     }
   }
 
@@ -628,14 +737,32 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     return super.onStateChange(state);
   }
 
+  /**
+   * Specifies the content description if the text is set for the badge. If the text is set for the
+   * badge and the content description is {@code null}, the badge text will be used as the content
+   * description by default.
+   */
+  public void setContentDescriptionForText(@Nullable CharSequence charSequence) {
+    state.setContentDescriptionForText(charSequence);
+  }
+
+  /**
+   * Specifies the content description if no text or number is set for the badge.
+   */
   public void setContentDescriptionNumberless(CharSequence charSequence) {
     state.setContentDescriptionNumberless(charSequence);
   }
 
+  /**
+   * Specifies the content description if the number is set for the badge.
+   */
   public void setContentDescriptionQuantityStringsResource(@PluralsRes int stringsResource) {
     state.setContentDescriptionQuantityStringsResource(stringsResource);
   }
 
+  /**
+   * Specifies the content description if the badge number exceeds the maximum value.
+   */
   public void setContentDescriptionExceedsMaxBadgeNumberStringResource(
       @StringRes int stringsResource) {
     state.setContentDescriptionExceedsMaxBadgeNumberStringResource(stringsResource);
@@ -646,27 +773,89 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     if (!isVisible()) {
       return null;
     }
-    if (hasNumber()) {
-      if (state.getContentDescriptionQuantityStrings() != 0) {
-        Context context = contextRef.get();
-        if (context == null) {
-          return null;
-        }
-        if (getNumber() <= maxBadgeNumber) {
-          return context
-              .getResources()
-              .getQuantityString(
-                  state.getContentDescriptionQuantityStrings(), getNumber(), getNumber());
-        } else {
-          return context.getString(
-              state.getContentDescriptionExceedsMaxBadgeNumberStringResource(), maxBadgeNumber);
-        }
-      } else {
+    if (hasText()) {
+      return getTextContentDescription();
+    } else if (hasNumber()) {
+      return getNumberContentDescription();
+    } else {
+      return getEmptyContentDescription();
+    }
+  }
+
+  @Nullable
+  private String getNumberContentDescription() {
+    if (state.getContentDescriptionQuantityStrings() != 0) {
+      Context context = contextRef.get();
+      if (context == null) {
         return null;
       }
-    } else {
-      return state.getContentDescriptionNumberless();
+      if (maxBadgeNumber == BADGE_CONTENT_NOT_TRUNCATED || getNumber() <= maxBadgeNumber) {
+        return context
+            .getResources()
+            .getQuantityString(
+                state.getContentDescriptionQuantityStrings(), getNumber(), getNumber());
+      } else {
+        return context.getString(
+            state.getContentDescriptionExceedsMaxBadgeNumberStringResource(), maxBadgeNumber);
+      }
     }
+    return null;
+  }
+
+  @Nullable
+  private CharSequence getTextContentDescription() {
+    final CharSequence contentDescription = state.getContentDescriptionForText();
+    if (contentDescription != null) {
+      return contentDescription;
+    } else {
+      return getText();
+    }
+  }
+
+  private CharSequence getEmptyContentDescription() {
+    return state.getContentDescriptionNumberless();
+  }
+
+  /**
+   * Sets how much (in pixels) horizontal padding to add to the badge when it has label contents.
+   * Note that badges have a minimum width as specified by
+   * com.google.android.material.R.styleable#Badge_badgeWidth.
+   *
+   * @param horizontalPadding badge's horizontal padding
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeWidePadding
+   */
+  public void setHorizontalPadding(@Px int horizontalPadding) {
+    if (horizontalPadding != state.getBadgeHorizontalPadding()) {
+      state.setBadgeHorizontalPadding(horizontalPadding);
+      updateCenterAndBounds();
+    }
+  }
+
+  /** Returns the badge horizontal padding in pixels. */
+  @Px
+  public int getHorizontalPadding() {
+    return state.getBadgeHorizontalPadding();
+  }
+
+  /**
+   * Sets how much (in pixels) vertical padding to add to the badge when it has label contents. Note
+   * that badges have a minimum height as specified by
+   * com.google.android.material.R.styleable#Badge_badgeHeight.
+   *
+   * @param verticalPadding badge's vertical padding
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeVerticalPadding
+   */
+  public void setVerticalPadding(@Px int verticalPadding) {
+    if (verticalPadding != state.getBadgeVerticalPadding()) {
+      state.setBadgeVerticalPadding(verticalPadding);
+      updateCenterAndBounds();
+    }
+  }
+
+  /** Returns the badge vertical padding in pixels. */
+  @Px
+  public int getVerticalPadding() {
+    return state.getBadgeVerticalPadding();
   }
 
   /**
@@ -812,6 +1001,29 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
   }
 
   /**
+   * Sets how much (in pixels) to vertically move this badge away the center of its anchor when this
+   * badge has text and the font scale is at max size. This is in conjunction with the vertical
+   * offset with text.
+   *
+   * @param px how much to move the badge's vertical offset away from the center by when the font is
+   *     large.
+   */
+  public void setLargeFontVerticalOffsetAdjustment(@Px int px) {
+    state.setLargeFontVerticalOffsetAdjustment(px);
+    updateCenterAndBounds();
+  }
+
+  /**
+   * Returns how much (in pixels) this badge is being vertically moved away the center of its
+   * anchor when the badge has text and the font scale is at max. Note that this is not the total
+   * vertical offset.
+   */
+  @Px
+  public int getLargeFontVerticalOffsetAdjustment() {
+    return state.getLargeFontVerticalOffsetAdjustment();
+  }
+
+  /**
    * Sets how much (in pixels) more (in addition to {@code savedState.verticalOffset}) to vertically
    * move this badge towards the center of its anchor. Currently used to adjust the placement of
    * badges on toolbar items.
@@ -826,24 +1038,112 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     return state.getAdditionalVerticalOffset();
   }
 
-  private void setTextAppearanceResource(@StyleRes int id) {
+  /**
+   * Sets whether or not to auto adjust the badge placement to within the badge anchor's grandparent
+   * view.
+   *
+   * @param autoAdjustToWithinGrandparentBounds whether or not to auto adjust to within the anchor's
+   * grandparent view.
+   * @deprecated Badges now automatically adjust their bounds within the first ancestor view that *
+   * clips its children.
+   */
+  @Deprecated
+  public void setAutoAdjustToWithinGrandparentBounds(boolean autoAdjustToWithinGrandparentBounds) {
+    if (state.isAutoAdjustedToGrandparentBounds() == autoAdjustToWithinGrandparentBounds) {
+      return;
+    }
+    state.setAutoAdjustToGrandparentBounds(autoAdjustToWithinGrandparentBounds);
+    if (anchorViewRef != null && anchorViewRef.get() != null) {
+      autoAdjustWithinGrandparentBounds(anchorViewRef.get());
+    }
+  }
+
+  /**
+   * Sets this badge's text appearance resource.
+   *
+   * @param id This badge's text appearance res id.
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeTextAppearance
+   */
+  public void setTextAppearance(@StyleRes int id) {
+    state.setTextAppearanceResId(id);
+    onBadgeTextAppearanceUpdated();
+  }
+
+  private void onBadgeTextAppearanceUpdated() {
     Context context = contextRef.get();
     if (context == null) {
       return;
     }
-    setTextAppearance(new TextAppearance(context, id));
-  }
-
-  private void setTextAppearance(@Nullable TextAppearance textAppearance) {
+    TextAppearance textAppearance = new TextAppearance(context, state.getTextAppearanceResId());
     if (textDrawableHelper.getTextAppearance() == textAppearance) {
       return;
     }
+    textDrawableHelper.setTextAppearance(textAppearance, context);
+    onBadgeTextColorUpdated();
+    updateCenterAndBounds();
+    invalidateSelf();
+  }
+
+  /**
+   * Sets this badge without text's shape appearance resource.
+   *
+   * @param id This badge's shape appearance res id when there is no text.
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeShapeAppearance
+   */
+  public void setBadgeWithoutTextShapeAppearance(@StyleRes int id) {
+    state.setBadgeShapeAppearanceResId(id);
+    onBadgeShapeAppearanceUpdated();
+  }
+
+  /**
+   * Sets this badge without text's shape appearance overlay resource.
+   *
+   * @param id This badge's shape appearance overlay res id when there is no text.
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeShapeAppearanceOverlay
+   */
+  public void setBadgeWithoutTextShapeAppearanceOverlay(@StyleRes int id) {
+    state.setBadgeShapeAppearanceOverlayResId(id);
+    onBadgeShapeAppearanceUpdated();
+  }
+
+  /**
+   * Sets this badge with text's shape appearance resource.
+   *
+   * @param id This badge's shape appearance res id when there is text.
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeWithTextShapeAppearance
+   */
+  public void setBadgeWithTextShapeAppearance(@StyleRes int id) {
+    state.setBadgeWithTextShapeAppearanceResId(id);
+    onBadgeShapeAppearanceUpdated();
+  }
+
+  /**
+   * Sets this badge with text's shape appearance overlay resource.
+   *
+   * @param id This badge's shape appearance overlay res id when there is text.
+   * @attr ref com.google.android.material.R.styleable#Badge_badgeWithTextShapeAppearanceOverlay
+   */
+  public void setBadgeWithTextShapeAppearanceOverlay(@StyleRes int id) {
+    state.setBadgeWithTextShapeAppearanceOverlayResId(id);
+    onBadgeShapeAppearanceUpdated();
+  }
+
+  private void onBadgeShapeAppearanceUpdated() {
     Context context = contextRef.get();
     if (context == null) {
       return;
     }
-    textDrawableHelper.setTextAppearance(textAppearance, context);
-    updateCenterAndBounds();
+    shapeDrawable.setShapeAppearanceModel(
+        ShapeAppearanceModel.builder(
+                context,
+                hasBadgeContent()
+                    ? state.getBadgeWithTextShapeAppearanceResId()
+                    : state.getBadgeShapeAppearanceResId(),
+                hasBadgeContent()
+                    ? state.getBadgeWithTextShapeAppearanceOverlayResId()
+                    : state.getBadgeShapeAppearanceOverlayResId())
+            .build());
+    invalidateSelf();
   }
 
   private void updateCenterAndBounds() {
@@ -860,38 +1160,97 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     anchorView.getDrawingRect(anchorRect);
 
     ViewGroup customBadgeParent = customBadgeParentRef != null ? customBadgeParentRef.get() : null;
-    if (customBadgeParent != null || BadgeUtils.USE_COMPAT_PARENT) {
+    if (customBadgeParent != null) {
       // Calculates coordinates relative to the parent.
-      ViewGroup viewGroup =
-          customBadgeParent == null ? (ViewGroup) anchorView.getParent() : customBadgeParent;
-      viewGroup.offsetDescendantRectToMyCoords(anchorView, anchorRect);
+      customBadgeParent.offsetDescendantRectToMyCoords(anchorView, anchorRect);
     }
 
-    calculateCenterAndBounds(context, anchorRect, anchorView);
+    calculateCenterAndBounds(anchorRect, anchorView);
 
     updateBadgeBounds(badgeBounds, badgeCenterX, badgeCenterY, halfBadgeWidth, halfBadgeHeight);
 
-    shapeDrawable.setCornerSize(cornerRadius);
+    // If there is a badge radius specified, override the corner size set by the shape appearance
+    // with the badge radius.
+    if (cornerRadius != BADGE_RADIUS_NOT_SPECIFIED) {
+      shapeDrawable.setCornerSize(cornerRadius);
+    }
     if (!tmpRect.equals(badgeBounds)) {
       shapeDrawable.setBounds(badgeBounds);
     }
   }
 
   private int getTotalVerticalOffsetForState() {
-    int vOffset =
-        hasNumber() ? state.getVerticalOffsetWithText() : state.getVerticalOffsetWithoutText();
+    int vOffset = state.getVerticalOffsetWithoutText();
+    if (hasBadgeContent()) {
+      vOffset = state.getVerticalOffsetWithText();
+      Context context = contextRef.get();
+      if (context != null) {
+        float progress =
+            AnimationUtils.lerp(0F, 1F,
+                FONT_SCALE_THRESHOLD, 1F, MaterialResources.getFontScale(context) - 1F);
+        vOffset =
+            AnimationUtils.lerp(
+                vOffset, vOffset - state.getLargeFontVerticalOffsetAdjustment(), progress);
+      }
+    }
+
+
+
+    // If the offset alignment mode is at the edge of the anchor, we want to move the badge
+    // so that its origin is at the edge.
+    if (state.offsetAlignmentMode == OFFSET_ALIGNMENT_MODE_EDGE) {
+      vOffset -= Math.round(halfBadgeHeight);
+    }
     return vOffset + state.getAdditionalVerticalOffset();
   }
 
   private int getTotalHorizontalOffsetForState() {
     int hOffset =
-        hasNumber() ? state.getHorizontalOffsetWithText() : state.getHorizontalOffsetWithoutText();
+        hasBadgeContent()
+            ? state.getHorizontalOffsetWithText()
+            : state.getHorizontalOffsetWithoutText();
+    // If the offset alignment mode is legacy, then we want to add the legacy inset to the offset.
+    if (state.offsetAlignmentMode == OFFSET_ALIGNMENT_MODE_LEGACY) {
+      hOffset += hasBadgeContent() ? state.horizontalInsetWithText : state.horizontalInset;
+    }
     return hOffset + state.getAdditionalHorizontalOffset();
   }
 
-  private void calculateCenterAndBounds(
-      @NonNull Context context, @NonNull Rect anchorRect, @NonNull View anchorView) {
+  private void calculateCenterAndBounds(@NonNull Rect anchorRect, @NonNull View anchorView) {
+    cornerRadius = hasBadgeContent() ? state.badgeWithTextRadius : state.badgeRadius;
+    if (cornerRadius != BADGE_RADIUS_NOT_SPECIFIED) {
+      halfBadgeWidth = cornerRadius;
+      halfBadgeHeight = cornerRadius;
+    } else {
+      halfBadgeWidth =
+          Math.round(hasBadgeContent() ? state.badgeWithTextWidth / 2 : state.badgeWidth / 2);
+      halfBadgeHeight =
+          Math.round(hasBadgeContent() ? state.badgeWithTextHeight / 2 : state.badgeHeight / 2);
+    }
+
+    // If the badge has a number, we want to make sure that the badge is at least tall/wide
+    // enough to encompass the text with padding.
+    if (hasBadgeContent()) {
+      String badgeContent = getBadgeContent();
+
+      halfBadgeWidth =
+          Math.max(
+              halfBadgeWidth,
+              textDrawableHelper.getTextWidth(badgeContent) / 2f
+                  + state.getBadgeHorizontalPadding());
+
+      halfBadgeHeight =
+          Math.max(
+              halfBadgeHeight,
+              textDrawableHelper.getTextHeight(badgeContent) / 2f
+                  + state.getBadgeVerticalPadding());
+
+      // If the badge has text, it should at least have the same width as it does height
+      halfBadgeWidth = Math.max(halfBadgeWidth, halfBadgeHeight);
+    }
+
     int totalVerticalOffset = getTotalVerticalOffsetForState();
+
     switch (state.getBadgeGravity()) {
       case BOTTOM_END:
       case BOTTOM_START:
@@ -904,62 +1263,234 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
         break;
     }
 
-    if (getNumber() <= MAX_CIRCULAR_BADGE_NUMBER_COUNT) {
-      cornerRadius = !hasNumber() ? state.badgeRadius : state.badgeWithTextRadius;
-      halfBadgeHeight = cornerRadius;
-      halfBadgeWidth = cornerRadius;
-    } else {
-      cornerRadius = state.badgeWithTextRadius;
-      halfBadgeHeight = cornerRadius;
-      String badgeText = getBadgeText();
-      halfBadgeWidth = textDrawableHelper.getTextWidth(badgeText) / 2f + state.badgeWidePadding;
-    }
-
-    int inset =
-        context
-            .getResources()
-            .getDimensionPixelSize(
-                hasNumber()
-                    ? R.dimen.mtrl_badge_text_horizontal_edge_offset
-                    : R.dimen.mtrl_badge_horizontal_edge_offset);
-
     int totalHorizontalOffset = getTotalHorizontalOffsetForState();
 
-    // Update the centerX based on the badge width and 'inset' from start or end boundary of anchor.
+    // Update the centerX based on the badge width and offset from start or end boundary of anchor.
     switch (state.getBadgeGravity()) {
       case BOTTOM_START:
       case TOP_START:
-        badgeCenterX =
-            ViewCompat.getLayoutDirection(anchorView) == View.LAYOUT_DIRECTION_LTR
-                ? anchorRect.left - halfBadgeWidth + inset + totalHorizontalOffset
-                : anchorRect.right + halfBadgeWidth - inset - totalHorizontalOffset;
+        badgeCenterX = state.badgeFixedEdge == BADGE_FIXED_EDGE_START
+            ? (anchorView.getLayoutDirection() == View.LAYOUT_DIRECTION_LTR
+              ? anchorRect.left + halfBadgeWidth - (halfBadgeHeight * 2 - totalHorizontalOffset)
+              : anchorRect.right - halfBadgeWidth + (halfBadgeHeight * 2 - totalHorizontalOffset))
+            : (anchorView.getLayoutDirection() == View.LAYOUT_DIRECTION_LTR
+                ? anchorRect.left - halfBadgeWidth + totalHorizontalOffset
+                : anchorRect.right + halfBadgeWidth - totalHorizontalOffset);
         break;
       case BOTTOM_END:
       case TOP_END:
       default:
-        badgeCenterX =
-            ViewCompat.getLayoutDirection(anchorView) == View.LAYOUT_DIRECTION_LTR
-                ? anchorRect.right + halfBadgeWidth - inset - totalHorizontalOffset
-                : anchorRect.left - halfBadgeWidth + inset + totalHorizontalOffset;
+        badgeCenterX = state.badgeFixedEdge == BADGE_FIXED_EDGE_START
+            ? (anchorView.getLayoutDirection() == View.LAYOUT_DIRECTION_LTR
+                ? anchorRect.right + halfBadgeWidth - totalHorizontalOffset
+                : anchorRect.left - halfBadgeWidth + totalHorizontalOffset)
+            : (anchorView.getLayoutDirection() == View.LAYOUT_DIRECTION_LTR
+                ? anchorRect.right - halfBadgeWidth + (halfBadgeHeight * 2 - totalHorizontalOffset)
+                : anchorRect.left + halfBadgeWidth - (halfBadgeHeight * 2 - totalHorizontalOffset));
         break;
+    }
+
+    if (state.isAutoAdjustedToGrandparentBounds()) {
+      autoAdjustWithinGrandparentBounds(anchorView);
+    } else {
+      autoAdjustWithinViewBounds(anchorView, null);
     }
   }
 
-  private void drawText(Canvas canvas) {
-    Rect textBounds = new Rect();
-    String badgeText = getBadgeText();
-    textDrawableHelper.getTextPaint().getTextBounds(badgeText, 0, badgeText.length(), textBounds);
-    canvas.drawText(
-        badgeText,
-        badgeCenterX,
-        badgeCenterY + textBounds.height() / 2,
-        textDrawableHelper.getTextPaint());
+  /**
+   * Adjust the badge placement so it is within the specified ancestor view. If {@code ancestorView}
+   * is null, it will default to adjusting to the first ancestor of {@code anchorView} that clips
+   * its children.
+   */
+  private void autoAdjustWithinViewBounds(@NonNull View anchorView, @Nullable View ancestorView) {
+    // The top of the badge may be cut off by the anchor view's ancestor view if clipChildren is
+    // false (eg. in the case of the bottom navigation bar). If that is the case, we should adjust
+    // the position of the badge.
+
+    float totalAnchorYOffset;
+    float totalAnchorXOffset;
+    ViewParent anchorParent;
+    // If there is a custom badge parent, we should use its coordinates instead of the anchor
+    // view's parent.
+    ViewParent customAnchorParent = getCustomBadgeParent();
+    if (customAnchorParent == null) {
+      totalAnchorYOffset = anchorView.getY();
+      totalAnchorXOffset = anchorView.getX();
+      anchorParent = anchorView.getParent();
+    } else {
+      totalAnchorYOffset = 0;
+      totalAnchorXOffset = 0;
+      anchorParent = customAnchorParent;
+    }
+
+    ViewParent currentViewParent = anchorParent;
+    while (currentViewParent instanceof View && currentViewParent != ancestorView) {
+      ViewParent viewGrandparent = currentViewParent.getParent();
+      if (!(viewGrandparent instanceof ViewGroup)
+          || ((ViewGroup) viewGrandparent).getClipChildren()) {
+        break;
+      }
+      View currentViewGroup = (View) currentViewParent;
+      totalAnchorYOffset += currentViewGroup.getY();
+      totalAnchorXOffset += currentViewGroup.getX();
+      currentViewParent = currentViewParent.getParent();
+    }
+
+    // If currentViewParent is not a View, all ancestor Views did not clip their children
+    if (!(currentViewParent instanceof View)) {
+      return;
+    }
+
+    float topCutOff = getTopCutOff(totalAnchorYOffset);
+    float leftCutOff = getLeftCutOff(totalAnchorXOffset);
+    float bottomCutOff =
+        getBottomCutOff(((View) currentViewParent).getHeight(), totalAnchorYOffset);
+    float rightCutOff = getRightCutoff(((View) currentViewParent).getWidth(), totalAnchorXOffset);
+
+    // If there's any part of the badge that is cut off, we move the badge accordingly.
+    if (topCutOff < 0) {
+      badgeCenterY += Math.abs(topCutOff);
+    }
+    if (leftCutOff < 0) {
+      badgeCenterX += Math.abs(leftCutOff);
+    }
+    if (bottomCutOff > 0) {
+      badgeCenterY -= Math.abs(bottomCutOff);
+    }
+    if (rightCutOff > 0) {
+      badgeCenterX -= Math.abs(rightCutOff);
+    }
+  }
+
+  /** Adjust the badge placement so it is within its anchor's grandparent view. */
+  private void autoAdjustWithinGrandparentBounds(@NonNull View anchorView) {
+    // If there is a custom badge parent, we should use its coordinates instead of the anchor
+    // view's parent.
+    ViewParent customAnchor = getCustomBadgeParent();
+    ViewParent anchorParent = null;
+    if (customAnchor == null) {
+      anchorParent = anchorView.getParent();
+    } else {
+      anchorParent = customAnchor;
+    }
+    if (anchorParent instanceof View && anchorParent.getParent() instanceof View) {
+      autoAdjustWithinViewBounds(anchorView, (View) anchorParent.getParent());
+    }
+  }
+
+  /**
+   * Returns where the badge is relative to the top bound of the anchor's ancestor view. If the
+   * value is negative, it is beyond the bounds of the anchor's ancestor view.
+   *
+   * @param totalAnchorYOffset the total X offset of the anchor in relation to the ancestor view it
+   *     is adjusting its bounds to
+   */
+  private float getTopCutOff(float totalAnchorYOffset) {
+    return badgeCenterY - halfBadgeHeight + totalAnchorYOffset;
+  }
+
+  /**
+   * Returns where the badge is relative to the left bound of the anchor's ancestor view. If the
+   * value is negative, it is beyond the bounds of the anchor's ancestor view.
+   *
+   * @param totalAnchorXOffset the total X offset of the anchor in relation to the ancestor view it
+   *     is adjusting its bounds to
+   */
+  private float getLeftCutOff(float totalAnchorXOffset) {
+    return badgeCenterX - halfBadgeWidth + totalAnchorXOffset;
+  }
+
+  /**
+   * Returns where the badge is relative to the bottom bound of the anchor's ancestor view. If the
+   * value is positive, it is beyond the bounds of the anchor's ancestor view.
+   *
+   * @param ancestorHeight the height of the ancestor view
+   * @param totalAnchorYOffset the total Y offset of the anchor in relation to the ancestor view it
+   *     is adjusting its bounds to
+   */
+  private float getBottomCutOff(float ancestorHeight, float totalAnchorYOffset) {
+    return badgeCenterY + halfBadgeHeight - ancestorHeight + totalAnchorYOffset;
+  }
+
+  /**
+   * Returns where the badge is relative to the right bound of the anchor's ancestor view. If the
+   * value is positive, it is beyond the bounds of the anchor's ancestor view.
+   *
+   * @param ancestorWidth the width of the ancestor view
+   * @param totalAnchorXOffset the total X offset of the anchor in relation to the ancestor view it
+   *     is adjusting its bounds to
+   */
+  private float getRightCutoff(float ancestorWidth, float totalAnchorXOffset) {
+    return badgeCenterX + halfBadgeWidth - ancestorWidth + totalAnchorXOffset;
+  }
+
+  private void drawBadgeContent(Canvas canvas) {
+    String badgeContent = getBadgeContent();
+    if (badgeContent != null) {
+      Rect textBounds = new Rect();
+      textDrawableHelper
+          .getTextPaint()
+          .getTextBounds(badgeContent, 0, badgeContent.length(), textBounds);
+
+      // The text is centered horizontally using Paint.Align.Center. We calculate the correct
+      // y-coordinate ourselves using textbounds.exactCenterY, but this can look askew at low
+      // screen densities due to canvas.drawText rounding the coordinates to the nearest integer.
+      // To mitigate this, we round the y-coordinate following these rules:
+      // If the badge.bottom is <= 0, the text is drawn above its original origin (0,0) so
+      // we round down the y-coordinate since we want to keep it above its new origin.
+      // If the badge.bottom is positive, we round up for the opposite reason.
+      float exactCenterY = badgeCenterY - textBounds.exactCenterY();
+      canvas.drawText(
+          badgeContent,
+          badgeCenterX,
+          textBounds.bottom <= 0 ? (int) exactCenterY : Math.round(exactCenterY),
+          textDrawableHelper.getTextPaint());
+    }
+  }
+
+  private boolean hasBadgeContent() {
+    return hasText() || hasNumber();
+  }
+
+  @Nullable
+  private String getBadgeContent() {
+    if (hasText()) {
+      return getTextBadgeText();
+    } else if (hasNumber()) {
+      return getNumberBadgeText();
+    } else {
+      return null;
+    }
+  }
+
+  @Nullable
+  private String getTextBadgeText() {
+    String text = getText();
+    final int maxCharacterCount = getMaxCharacterCount();
+    if (maxCharacterCount == BADGE_CONTENT_NOT_TRUNCATED) {
+      return text;
+    }
+
+    if (text != null && text.length() > maxCharacterCount) {
+      Context context = contextRef.get();
+      if (context == null) {
+        return "";
+      }
+
+      text = text.substring(0, maxCharacterCount - 1);
+      return String.format(
+          context.getString(R.string.m3_exceed_max_badge_text_suffix),
+          text,
+          DEFAULT_EXCEED_MAX_BADGE_TEXT_SUFFIX);
+    } else {
+      return text;
+    }
   }
 
   @NonNull
-  private String getBadgeText() {
+  private String getNumberBadgeText() {
     // If number exceeds max count, show badgeMaxCount+ instead of the number.
-    if (getNumber() <= maxBadgeNumber) {
+    if (maxBadgeNumber == BADGE_CONTENT_NOT_TRUNCATED || getNumber() <= maxBadgeNumber) {
       return NumberFormat.getInstance(state.getNumberLocale()).format(getNumber());
     } else {
       Context context = contextRef.get();
@@ -975,7 +1506,21 @@ public class BadgeDrawable extends Drawable implements TextDrawableDelegate {
     }
   }
 
+  private void onBadgeContentUpdated() {
+    textDrawableHelper.setTextSizeDirty(true);
+    onBadgeShapeAppearanceUpdated();
+    updateCenterAndBounds();
+    invalidateSelf();
+  }
+
   private void updateMaxBadgeNumber() {
-    maxBadgeNumber = (int) Math.pow(10.0d, (double) getMaxCharacterCount() - 1) - 1;
+    if (getMaxCharacterCount() != BADGE_CONTENT_NOT_TRUNCATED) {
+      // If there exists a max character count, we set the maximum number a badge can have as the
+      // largest number that has maxCharCount - 1 digits, which accounts for the `+` as a character.
+      maxBadgeNumber = (int) Math.pow(10.0d, (double) getMaxCharacterCount() - 1) - 1;
+    } else {
+      maxBadgeNumber = getMaxNumber();
+    }
   }
 }
+
